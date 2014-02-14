@@ -5,25 +5,28 @@ ARGUMENT=$2
 
 # TODO: PLATFORM and DEPENDENCIES should be read from Rookfile
 PLATFORM="ruby-1.9.3"
-DEPENDENCIES="mysql-5.5 testing"
+DEPENDENCIES="mysql-5.5"
 
+# Re-deploy all containers locally and connect them
 function development_deploy
 {
   docker stop $PLATFORM
   docker rm $PLATFORM
-  APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rook/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
+  APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
 
   for DEPENDENCY in $DEPENDENCIES
   do
     docker stop $DEPENDENCY
     docker rm $DEPENDENCY
-    DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rook/$DEPENDENCY:/mount rook/$DEPENDENCY)
+    DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
 
-    # TODO: FIX INTERCONNECT BETWEEN APPLICATION AND DEPENDENCY HERE
+    sudo ./pipework br1 $DEPENDENCY_ID 192.168.1.2/24
+    sudo ./pipework br1 $APPLICATION_ID 192.168.1.1/24
 
   done
 }
 
+# This will ssh into the container with name $ARGUMENT
 function ssh_wrapper
 {
   if docker inspect $ARGUMENT 2> /dev/null | grep --quiet 'IPAddress' ; then
@@ -40,9 +43,16 @@ function ssh_wrapper
 
 function add
 {
-	echo "add"
   # TODO: Add the dependency to Rookfile
-  # TODO: Download rook mount
+  # TODO: Something to set platform
+
+  # TODO: The rook mountdir should be downloaded from some public source (maintained by us?)
+  if [ ! -d /tmp/rook ]; then
+    mkdir -p /tmp/rook
+    git clone git@gitlab.phusion.nl:rookcloud/containers.git /tmp/rook
+  fi
+  mkdir -p $PWD/rookdir
+  cp -Rf /tmp/rook/$ARGUMENT/mount $PWD/rookdir/$ARGUMENT
 }
 
 function remove
@@ -55,7 +65,7 @@ function remove
 function print_help
 {
 	cat << "EOF"
-Rook, the application deployment service.
+Rook, the application deployment tool.
 
 Examples:
   rook list available           # List all available dependencies
@@ -89,4 +99,3 @@ case $OPTION in
 *)
 	print_help;;
 esac
-
