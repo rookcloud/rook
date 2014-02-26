@@ -10,6 +10,13 @@ DEPENDENCIES="mysql-5.5"
 # Re-deploy all containers locally and connect them
 function development_deploy
 {
+
+  # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
+  if [ ! -f ./rookdir/pipework ]; then
+    wget -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
+    chmod +x  ./rookdir/pipework
+  fi
+
   docker stop $PLATFORM
   docker rm $PLATFORM
   APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
@@ -20,8 +27,8 @@ function development_deploy
     docker rm $DEPENDENCY
     DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
 
-    sudo ./pipework br1 $DEPENDENCY_ID 192.168.1.2/24
-    sudo ./pipework br1 $APPLICATION_ID 192.168.1.1/24
+    sudo ./rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24
+    sudo ./rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24
 
   done
 }
