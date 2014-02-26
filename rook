@@ -81,7 +81,7 @@ Usage:
 
   rook add <dependency>         # Add a dependency
   rook remove <depencency>      # Remove a dependency
-  rook deploy development       # deploy locally in development mosw
+  rook deploy development       # deploy locally in development mode
   rook deploy production        # deploy remotely in production mode
 EOF
 }
