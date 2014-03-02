@@ -1,108 +1,163 @@
 #!/bin/bash
 
-OPTION=$1
-ARGUMENT=$2
+# Load platform and dependencies
+load_dependencies() {
 
-# TODO: PLATFORM and DEPENDENCIES should be read from Rookfile
-PLATFORM="ruby-1.9.3"
-DEPENDENCIES="mysql-5.5"
+    # TODO: PLATFORM and DEPENDENCIES should be loaded from Rookfile
+    PLATFORM="ruby-1.9.3"
+    DEPENDENCIES="mysql-5.5"
+}
 
 # Re-deploy all containers locally and connect them
-function development_deploy
-{
+development_deploy() {
 
-  # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
-  if [ ! -f ./rookdir/pipework ]; then
-    wget -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
-    chmod +x  ./rookdir/pipework
-  fi
+    load_dependencies
 
-  docker stop $PLATFORM
-  docker rm $PLATFORM
-  APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
+    # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
+    if [ ! -f ./rookdir/pipework ]; then
+        wget -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
+        chmod +x  ./rookdir/pipework
+    fi
 
-  for DEPENDENCY in $DEPENDENCIES
-  do
-    docker stop $DEPENDENCY
-    docker rm $DEPENDENCY
-    DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
+    # TODO: start containers with the correct tags (versions)
+    docker stop $PLATFORM
+    docker rm $PLATFORM
+    APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
 
-    sudo ./rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24
-    sudo ./rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24
+    for DEPENDENCY in $DEPENDENCIES
+    do
+        docker stop $DEPENDENCY
+        docker rm $DEPENDENCY
+        DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
 
-  done
+        sudo ./rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24
+        sudo ./rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24
+    done
+
+    # TODO: Print the IP address of the webapp container, possibly set hosts.
+}
+
+# Stop the currently deployed local containers
+# TODO: Make this detect running containers instead of reading them from dependencies.
+#       Users can change the dependencies while containers are running, causing containers not to be stopped.
+development_stop() {
+
+    load_dependencies
+
+    docker stop $PLATFORM
+    docker rm $PLATFORM
+    for DEPENDENCY in $DEPENDENCIES
+    do
+        docker stop $DEPENDENCY
+        docker rm $DEPENDENCY
+    done
 }
 
 # This will ssh into the container with name $ARGUMENT
-function ssh_wrapper
-{
-  if docker inspect $ARGUMENT 2> /dev/null | grep --quiet 'IPAddress' ; then
-    if docker inspect $ARGUMENT | grep 'IPAddress' | grep -E --quiet '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' ; then
-        IP_ADDRESS=`docker inspect $ARGUMENT | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
-        ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/insecure_key root@$IP_ADDRESS
+ssh_wrapper() {
+
+    if docker inspect $ARGUMENT 2> /dev/null | grep --quiet 'IPAddress' ; then
+        if docker inspect $ARGUMENT | grep 'IPAddress' | grep -E --quiet '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' ; then
+            IP_ADDRESS=`docker inspect $ARGUMENT | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
+            ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/insecure_key root@$IP_ADDRESS
+        else
+            echo "$ARGUMENT is not running"
+        fi
     else
-      echo "$ARGUMENT is not running"
+        echo "$ARGUMENT does not exist"
     fi
-  else
-    echo "$ARGUMENT does not exist"
-  fi
 }
 
-function add
-{
-  # TODO: Add the dependency to Rookfile
-  # TODO: Something to set platform
+add() {
 
-  # TODO: The rook mountdir should be downloaded from some public source (maintained by us?)
-  if [ ! -d /tmp/rook ]; then
-    mkdir -p /tmp/rook
-    git clone git@gitlab.phusion.nl:rookcloud/containers.git /tmp/rook
-  fi
-  mkdir -p $PWD/rookdir
-  cp -Rf /tmp/rook/$ARGUMENT/mount $PWD/rookdir/$ARGUMENT
+    DEPENDENCY=$1
+    if [ "$DEPENDENCY" == "" ]; then
+        usage
+        return
+    fi
+
+    VERSION=$2
+    case "$VERSION" in
+        "edge")
+            VERSION="master"
+            ;;
+        "")
+            VERSION="release"
+            ;;
+    esac
+
+    # TODO: Add the dependency to Rookfile
+    # TODO: Different syntax for setting platform?
+    
+    if [ -d $PWD/rookdir/$DEPENDENCY ]; then
+        echo "Warning - Dependency $DEPENDENCY is already installed in ./rookdir/$DEPENDENCY"
+        echo -n "Do you wish to reset your data, configurations and logs for this dependency? [y/n] "
+        read confirm
+        if [[ $confirm != [Yy] ]]; then
+            echo "Aborting..."
+            return
+        fi
+    fi
+
+    mkdir -p $PWD/rookdir/$DEPENDENCY
+
+    # -q0- makes wget send the downloaded file to stdout for piping.
+    # --strip-components 2 gets rid of the leading /$dependency/mount/ directories.
+    wget -qO- https://github.com/rookcloud/$DEPENDENCY/archive/$VERSION.tar.gz \
+      | tar -zx -C $PWD/rookdir/$DEPENDENCY --strip-components 2 $DEPENDENCY-$VERSION/mount 
+
+    if [ $? -ne 0 ]; then
+        echo "Error - Could not download $DEPENDENCY-$VERSION, aborting..."
+        return
+    fi
 }
 
-function remove
-{
-	echo "remove"
-  # TODO: Remove the dependency from Rookfile
+remove() {
+    echo "remove"
+    # TODO: Remove the dependency from Rookfile
+}
+
+usage() {
+    echo "Rook, the application deployment tool."
+    echo ""
+    echo "Examples:"
+    echo "    rook list available               # List all available dependencies"
+    echo "    rook add mysql-5.5                # Add mysql-5.5 as a dependency"
+    echo "    rook deploy development           # Deploy locally in development mode"
+    echo "    rook ssh mysql-5.5                # Log in to the mys1ql-5.5 environment"
+    echo ""
+    echo "Usage:"
+    echo "    rook list available               # List available dependencies"
+    echo "    rook list installed               # List installed dependencies"
+    echo ""
+    echo "    rook ssh <dependency>             # Log in to the dependency environment"
+    echo ""
+    echo "    rook add <dependency> [version]   # Add a dependency. Optionally pass a version"
+    echo "    rook remove <depencency>          # Remove a dependency"
+    echo "    rook deploy development           # deploy locally in development mode"
+    echo "    rook deploy production            # deploy remotely in production mode"
 }
 
 
-function print_help
-{
-	cat << "EOF"
-Rook, the application deployment tool.
-
-Examples:
-  rook list available           # List all available dependencies
-  rook add mysql-5.5            # Add mysql-5.5 as a dependency
-  rook deploy development       # Deploy locally in development mode
-  rook ssh mysql-5.5            # Log in to the mys1ql-5.5 environment
-
-Usage:
-  rook list available           # List available dependencies
-  rook list installed           # List installed dependencies
-
-  rook ssh <dependency>         # Log in to the dependency environment
-
-  rook add <dependency>         # Add a dependency
-  rook remove <depencency>      # Remove a dependency
-  rook deploy development       # deploy locally in development mode
-  rook deploy production        # deploy remotely in production mode
-EOF
-}
-
-
-case $OPTION in
-"add")
-	add;;
-"remove")
-	remove;;
-"deploy")
-	development_deploy;;
-"ssh")
-  ssh_wrapper;;
-*)
-	print_help;;
+COMMAND=$1
+shift
+case $COMMAND in
+    "add")
+        add $@
+        ;;
+    "remove")
+        remove
+        ;;
+    "run")
+        development_deploy
+        ;;
+    "stop")
+        development_deploy
+        ;;
+    "ssh")
+        ssh_wrapper
+        ;;
+    *)
+        usage
+        ;;
 esac
