@@ -13,6 +13,10 @@ development_deploy() {
 
     load_dependencies
 
+    # TODO: Pipework does not work on OSX when the containers run inside a VM.
+    # Before trying to build hacky solutions, we probably want to wait for Docker 
+    # to mature its network stack a bit. See: https://github.com/dotcloud/docker/issues/2900
+
     # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
     if [ ! -f ./rookdir/pipework ]; then
         echo "Pipework not detected. Installing..."
