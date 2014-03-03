@@ -15,8 +15,9 @@ development_deploy() {
 
     # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
     if [ ! -f ./rookdir/pipework ]; then
-        wget -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
-        chmod +x  ./rookdir/pipework
+        echo "Pipework not detected. Installing..."
+        wget --quiet -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
+        chmod +x ./rookdir/pipework
     fi
 
     # TODO: start containers with the correct tags (versions)
