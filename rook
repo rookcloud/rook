@@ -27,7 +27,7 @@ development_deploy() {
     # TODO: start containers with the correct tags (versions)
     docker stop $PLATFORM
     docker rm $PLATFORM
-    APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
+    APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app -p 80:80 rook/$PLATFORM init_wrapper $DEPENDENCIES)
 
     for DEPENDENCY in $DEPENDENCIES
     do
@@ -45,7 +45,7 @@ development_deploy() {
 # Stop the currently deployed local containers
 # TODO: Make this detect running containers instead of reading them from dependencies.
 #       Users can change the dependencies while containers are running, causing containers not to be stopped.
-development_stop() {
+development_halt() {
 
     load_dependencies
 
@@ -58,18 +58,25 @@ development_stop() {
     done
 }
 
-# This will ssh into the container with name $ARGUMENT
+# This will ssh into the container with the name passed as a parameter
 ssh_wrapper() {
 
-    if docker inspect $ARGUMENT 2> /dev/null | grep --quiet 'IPAddress' ; then
-        if docker inspect $ARGUMENT | grep 'IPAddress' | grep -E --quiet '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' ; then
-            IP_ADDRESS=`docker inspect $ARGUMENT | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
+
+    CONTAINER=$1
+    if [ "$CONTAINER" == "" ]; then
+        usage
+        return
+    fi
+
+    if docker inspect $CONTAINER 2> /dev/null | grep --quiet 'IPAddress' ; then
+        if docker inspect $CONTAINER | grep 'IPAddress' | grep -E --quiet '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}' ; then
+            IP_ADDRESS=`docker inspect $CONTAINER | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
             ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/insecure_key root@$IP_ADDRESS
         else
-            echo "$ARGUMENT is not running"
+            echo "$CONTAINER is not running"
         fi
     else
-        echo "$ARGUMENT does not exist"
+        echo "$CONTAINER does not exist"
     fi
 }
 
@@ -128,19 +135,20 @@ usage() {
     echo "Examples:"
     echo "    rook list available               # List all available dependencies"
     echo "    rook add mysql-5.5                # Add mysql-5.5 as a dependency"
-    echo "    rook deploy development           # Deploy locally in development mode"
+    echo "    rook run                          # Deploy locally in development mode"
     echo "    rook ssh mysql-5.5                # Log in to the mys1ql-5.5 environment"
     echo ""
     echo "Usage:"
     echo "    rook list available               # List available dependencies"
     echo "    rook list installed               # List installed dependencies"
-    echo ""
-    echo "    rook ssh <dependency>             # Log in to the dependency environment"
-    echo ""
-    echo "    rook add <dependency> [version]   # Add a dependency. Optionally pass a version"
+    echo "    rook add <dependency> [version]   # Install a dependency. Optionally pass a version"
     echo "    rook remove <depencency>          # Remove a dependency"
-    echo "    rook deploy development           # deploy locally in development mode"
-    echo "    rook deploy production            # deploy remotely in production mode"
+    echo ""
+    echo "    rook run                          # Deploy locally in development mode"
+    echo "    rook halt                         # Halt local development mode"
+    echo "    rook ssh <dependency>             # Log in to the development environment"
+    echo ""
+    echo "    rook deploy <location>            # deploy remotely in production mode"
 }
 
 
@@ -156,11 +164,11 @@ case $COMMAND in
     "run")
         development_deploy
         ;;
-    "stop")
-        development_deploy
+    "halt")
+        development_halt
         ;;
     "ssh")
-        ssh_wrapper
+        ssh_wrapper $@
         ;;
     *)
         usage
