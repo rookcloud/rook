@@ -13,21 +13,23 @@ development_deploy() {
 
     load_dependencies
 
-    # TODO: Pipework does not work on OSX when the containers run inside a VM.
-    # Before trying to build hacky solutions, we probably want to wait for Docker 
-    # to mature its network stack a bit. See: https://github.com/dotcloud/docker/issues/2900
+    if [ `uname -s` == "Darwin" ]; then
+        OSX=true
+    fi
 
     # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
     if [ ! -f ./rookdir/pipework ]; then
-        echo "Pipework not detected. Installing..."
-        wget --quiet -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
-        chmod +x ./rookdir/pipework
+        wget -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
+        chmod +x  ./rookdir/pipework
     fi
+
+    # TODO: When we are on OSX, we should check if the Vagrant VM is running and docker is configured 
+    #       correctly to use the Docker daemon in the Vagrant VM
 
     # TODO: start containers with the correct tags (versions)
     docker stop $PLATFORM
     docker rm $PLATFORM
-    APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app -p 80:80 rook/$PLATFORM init_wrapper $DEPENDENCIES)
+    APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
 
     for DEPENDENCY in $DEPENDENCIES
     do
@@ -35,8 +37,14 @@ development_deploy() {
         docker rm $DEPENDENCY
         DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
 
-        sudo ./rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24
-        sudo ./rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24
+        if [ "$OSX" = true ]; then
+            # The custom TCP port is where we expose Docker in the Vagrant environment for OSX
+            vagrant ssh -c "sudo DOCKER_HOST=tcp://10.13.37.2:4243 /vagrant/rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24"
+            vagrant ssh -c "sudo DOCKER_HOST=tcp://10.13.37.2:4243 /vagrant/rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24"
+        else
+            sudo ./rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24
+            sudo ./rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24
+        fi
     done
 
     # TODO: Print the IP address of the webapp container, possibly set hosts.
