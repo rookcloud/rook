@@ -11,11 +11,16 @@ load_dependencies() {
 # Re-deploy all containers locally and connect them
 development_deploy() {
 
-    load_dependencies
+    development_halt
 
     if [ `uname -s` == "Darwin" ]; then
-        OSX=true
+        osx_deploy
+    else
+        native_deploy
     fi
+}
+
+native_deploy() {
 
     # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
     if [ ! -f ./rookdir/pipework ]; then
@@ -23,33 +28,45 @@ development_deploy() {
         chmod +x ./rookdir/pipework
     fi
 
-    # TODO: When we are on OSX, we should check if the Vagrant VM is running and docker is configured 
-    #       correctly to use the Docker daemon in the Vagrant VM
-
     # TODO: start containers with the correct tags (versions)
-    docker stop $PLATFORM
-    docker rm $PLATFORM
+    # TODO: Name the containers with an application-specific namespace.
     APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
 
     for DEPENDENCY in $DEPENDENCIES
     do
-        docker stop $DEPENDENCY
-        docker rm $DEPENDENCY
         DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
 
-        if [ "$OSX" = true ]; then
-            # The custom TCP port is where we expose Docker in the Vagrant environment for OSX
-            vagrant ssh -c "sudo DOCKER_HOST=tcp://10.13.37.2:4243 /vagrant/rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24"
-            vagrant ssh -c "sudo DOCKER_HOST=tcp://10.13.37.2:4243 /vagrant/rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24"
-        else
-            sudo ./rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24
-            sudo ./rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24
-        fi
+        # Connect the application and the dependency through pipework
+        # TODO: Support more than 1 dependency by using another technology to connect containers.
+        sudo ./rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24
+        sudo ./rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24
     done
 
     IP_ADDRESS=`docker inspect $APPLICATION_ID | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
     echo "Application started at: $IP_ADDRESS"
     
+}
+
+osx_deploy() {
+
+    # TODO: When we are on OSX, we should check if the Vagrant VM is operational
+
+    DOCKER_HOST="tcp://10.15.11.5:4243"
+
+    APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
+
+    for DEPENDENCY in $DEPENDENCIES
+    do
+        DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
+        
+        # Connect the application and the dependency through pipework
+        # The DOCKER_HOST points to the Vagrant VM itself where docker is listening.
+        vagrant ssh -c "sudo DOCKER_HOST=tcp://10.15.11.5:4243 /vagrant/rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24"
+        vagrant ssh -c "sudo DOCKER_HOST=tcp://10.15.11.5:4243 /vagrant/rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24"
+    done
+
+    IP_ADDRESS=`docker inspect $APPLICATION_ID | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
+    echo "Application started at: $IP_ADDRESS"
 }
 
 # Stop the currently deployed local containers
@@ -70,7 +87,6 @@ development_halt() {
 
 # This will ssh into the container with the name passed as a parameter
 ssh_wrapper() {
-
 
     CONTAINER=$1
     if [ "$CONTAINER" == "" ]; then
