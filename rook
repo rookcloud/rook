@@ -19,8 +19,8 @@ development_deploy() {
 
     # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
     if [ ! -f ./rookdir/pipework ]; then
-        wget -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
-        chmod +x  ./rookdir/pipework
+        wget --quiet -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
+        chmod +x ./rookdir/pipework
     fi
 
     # TODO: When we are on OSX, we should check if the Vagrant VM is running and docker is configured 
@@ -47,7 +47,9 @@ development_deploy() {
         fi
     done
 
-    # TODO: Print the IP address of the webapp container, possibly set hosts.
+    IP_ADDRESS=`docker inspect $APPLICATION_ID | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
+    echo "Application started at: $IP_ADDRESS"
+    
 }
 
 # Stop the currently deployed local containers
