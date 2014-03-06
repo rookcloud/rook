@@ -3,6 +3,50 @@
 # Load platform and dependencies
 load_dependencies() {
 
+    if [ `uname -s` == "Darwin" ]; then
+        OSX=true
+    fi
+
+    # Check if docker is installed
+    command -v docker >/dev/null 2>&1 || {
+        if [ "$OSX" == true ]; then
+            echo >&2 "Rook uses Docker. The Docker OS X Client could not be found."
+            echo >&2 "Please install the Docker client (http://docs.docker.io/en/latest/installation/mac/):"
+            echo >&2 ""
+            echo >&2 "curl -o docker https://get.docker.io/builds/Darwin/x86_64/docker-latest"
+            echo >&2 "chmod +x docker"
+            echo >&2 "sudo cp docker /usr/local/bin/"
+            exit 1 
+        else
+            echo >&2 "Rook uses Docker. The Docker Client could not be found."
+            echo >&2 "Please refer to the Docker installation instructions for your platform:"
+            echo >&2 ""
+            echo >&2 "https://www.docker.io/gettingstarted/#h_installation"
+            exit 1 
+        fi
+    }
+
+    # When using OS X, make sure the Vagrant VM is running before proceeding    
+    if [ "$OSX" == true ]; then
+        
+        # Check if Vagrant is installed
+        command -v vagrant >/dev/null 2>&1 || { 
+            echo >&2 "Rook uses Vagrant on OS X."
+            echo >&2 "Please refer to the installation instructions on the Vagrant website:"
+            echo >&2 ""
+            echo >&2 "http://www.vagrantup.com/downloads.html"
+            exit 1
+        }
+
+        # Check if the Vagrantfile is available, fetch it if it isn't
+        if [ ! -f ./rookdir/Vagrantfile ]; then
+            wget --quiet -P "./rookdir" https://raw.github.com/rookcloud/rook/master/Vagrantfile
+        fi
+
+        # Start the Vagrant VM
+        (cd rookdir && vagrant up) || { echo >&2 "Could not start the Vagrant VM. Exiting..."; exit 1; }
+    fi
+
     # TODO: PLATFORM and DEPENDENCIES should be loaded from Rookfile
     PLATFORM="ruby-1.9.3"
     DEPENDENCIES="mysql-5.5"
@@ -13,7 +57,7 @@ development_deploy() {
 
     development_halt
 
-    if [ `uname -s` == "Darwin" ]; then
+    if [ "$OSX" == true ]; then
         osx_deploy
     else
         native_deploy
@@ -30,43 +74,37 @@ native_deploy() {
 
     # TODO: start containers with the correct tags (versions)
     # TODO: Name the containers with an application-specific namespace.
-    APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
+    docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES
 
     for DEPENDENCY in $DEPENDENCIES
     do
-        DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
+        docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY
 
         # Connect the application and the dependency through pipework
         # TODO: Support more than 1 dependency by using another technology to connect containers.
-        sudo ./rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24
-        sudo ./rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24
+        sudo ./rookdir/pipework br1 $DEPENDENCY 192.168.1.2/24
+        sudo ./rookdir/pipework br1 $PLATFORM 192.168.1.1/24
     done
 
-    IP_ADDRESS=`docker inspect $APPLICATION_ID | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
+    IP_ADDRESS=`docker inspect $PLATFORM | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
     echo "Application started at: $IP_ADDRESS"
     
 }
 
 osx_deploy() {
 
-    # TODO: When we are on OSX, we should check if the Vagrant VM is operational
-
-    DOCKER_HOST="tcp://10.15.11.5:4243"
-
-    APPLICATION_ID=$(docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES)
-
+    (cd ./rookdir && vagrant ssh -c "docker run -name $PLATFORM -d -v /home/vagrant/mounts/$PLATFORM:/mount -v /vagrant:/app -p 80:80 rook/$PLATFORM init_wrapper $DEPENDENCIES")
     for DEPENDENCY in $DEPENDENCIES
     do
-        DEPENDENCY_ID=$(docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY)
+        (cd ./rookdir && vagrant ssh -c "docker run -name $DEPENDENCY -d -v /home/vagrant/mounts/$DEPENDENCY:/mount rook/$DEPENDENCY")
         
         # Connect the application and the dependency through pipework
-        # The DOCKER_HOST points to the Vagrant VM itself where docker is listening.
-        vagrant ssh -c "sudo DOCKER_HOST=tcp://10.15.11.5:4243 /vagrant/rookdir/pipework br1 $DEPENDENCY_ID 192.168.1.2/24"
-        vagrant ssh -c "sudo DOCKER_HOST=tcp://10.15.11.5:4243 /vagrant/rookdir/pipework br1 $APPLICATION_ID 192.168.1.1/24"
+        (cd ./rookdir && vagrant ssh -c "sudo /home/vagrant/pipework br1 $DEPENDENCY 192.168.1.2/24")
+        (cd ./rookdir && vagrant ssh -c "sudo /home/vagrant/pipework br1 $PLATFORM 192.168.1.1/24")
     done
 
-    IP_ADDRESS=`docker inspect $APPLICATION_ID | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
-    echo "Application started at: $IP_ADDRESS"
+    # TODO: Get the Vagrant VM's accessible IP address
+    # echo "Application started at: VAGRANT VM address"
 }
 
 # Stop the currently deployed local containers
@@ -74,15 +112,22 @@ osx_deploy() {
 #       Users can change the dependencies while containers are running, causing containers not to be stopped.
 development_halt() {
 
-    load_dependencies
+    if [ "$OSX" == true ]; then
+        (cd ./rookdir && vagrant ssh -c "docker stop $PLATFORM; docker rm $PLATFORM")
+        for DEPENDENCY in $DEPENDENCIES
+        do
+            (cd ./rookdir && vagrant ssh -c "docker stop $DEPENDENCY; docker rm $DEPENDENCY")
+        done
+    else
+        docker stop $PLATFORM
+        docker rm $PLATFORM
+        for DEPENDENCY in $DEPENDENCIES
+        do
+            docker stop $DEPENDENCY
+            docker rm $DEPENDENCY
+        done
+    fi
 
-    docker stop $PLATFORM
-    docker rm $PLATFORM
-    for DEPENDENCY in $DEPENDENCIES
-    do
-        docker stop $DEPENDENCY
-        docker rm $DEPENDENCY
-    done
 }
 
 # This will ssh into the container with the name passed as a parameter
@@ -185,15 +230,18 @@ case $COMMAND in
         add $@
         ;;
     "remove")
-        remove
+        remove $@
         ;;
     "run")
+        load_dependencies
         development_deploy
         ;;
     "halt")
+        load_dependencies
         development_halt
         ;;
     "ssh")
+        load_dependencies
         ssh_wrapper $@
         ;;
     *)
