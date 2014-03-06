@@ -26,9 +26,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     pkg_cmd << %{echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list; }
     pkg_cmd << %{apt-get update -qq; apt-get install -q -y --force-yes lxc-docker; }
 
-    # Install bindfs
-    pkg_cmd << %{apt-get update -qq; apt-get install -q -y --force-yes bindfs; }
-
     # Add the Vagrant user to the Docker group
     pkg_cmd << %{usermod -a -G docker vagrant; }
 
