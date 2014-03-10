@@ -106,23 +106,23 @@ osx_deploy() {
     deploy_command="$deploy_command sudo cp -rp /vagrant/rookdir/$PLATFORM /mount/; "
 
     # Run the platform container
-    deploy_command="$deploy_command docker run -name $PLATFORM -d -v /mount/$PLATFORM:/mount -v /vagrant:/app -p 80:80 rook/$PLATFORM init_wrapper $DEPENDENCIES; "
+    deploy_command="$deploy_command docker run --name $APPNAME-$PLATFORM -d -v /mount/$PLATFORM:/mount -v /vagrant:/app -p 80:80 rook/$PLATFORM init_wrapper $DEPENDENCIES; "
     for DEPENDENCY in $DEPENDENCIES
     do
         # Copy the mountdir for the dependency to /mount
         deploy_command="$deploy_command sudo cp -rp /vagrant/rookdir/$DEPENDENCY /mount/; "
 
         # Run the dependency container
-        deploy_command="$deploy_command docker run -name $DEPENDENCY -d -v /mount/$DEPENDENCY:/mount rook/$DEPENDENCY; "
+        deploy_command="$deploy_command docker run --name $APPNAME-$DEPENDENCY -d -v /mount/$DEPENDENCY:/mount rook/$DEPENDENCY; "
         
         # Connect the application and the dependency through pipework
-        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $DEPENDENCY 192.168.1.2/24; "
-        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $PLATFORM 192.168.1.1/24; "
+        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $APPNAME-$DEPENDENCY 192.168.1.2/24; "
+        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $APPNAME-$PLATFORM 192.168.1.1/24; "
     done
 
     (cd ./rookdir && vagrant ssh -c "$deploy_command")
 
-    echo "Application started at: 127.0.0.1"
+    echo "Application started at: 172.18.0.1"
 }
 
 # Stop and remove the currently running containers for this application

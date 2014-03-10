@@ -5,6 +5,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "phusion-open-ubuntu-12.04-amd64"
   config.vm.box_url = "https://oss-binaries.phusionpassenger.com/vagrant/boxes/ubuntu-12.04.3-amd64-vbox.box"
 
+  # Basic port forwarding
+  config.vm.network "private_network", ip: "172.18.0.1"
+
   # Share the entire app
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder "..", "/vagrant"
