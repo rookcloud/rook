@@ -6,7 +6,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box_url = "https://oss-binaries.phusionpassenger.com/vagrant/boxes/ubuntu-12.04.3-amd64-vbox.box"
 
   # Basic port forwarding
-  config.vm.network "private_network", ip: "172.18.0.1"
+  config.vm.network "private_network", ip: "172.18.0.2"
 
   # Share the entire app
   config.vm.synced_folder ".", "/vagrant", disabled: true
