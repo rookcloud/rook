@@ -9,11 +9,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder "..", "/vagrant"
 
-  # Use bindFS to mount the mountpoints to /home/vagrant/mounts
-  config.bindfs.bind_folder "/vagrant/rookdir", "/home/vagrant/mounts", 
-    create_as_mounter: true, chown_ignore: true, chgrp_ignore: true, chmod_ignore: true
-
-
   config.vm.provider :vmware_fusion do |f, override|
     override.vm.box_url = "https://oss-binaries.phusionpassenger.com/vagrant/boxes/ubuntu-12.04.3-amd64-vmwarefusion.box"
   end

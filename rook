@@ -93,29 +93,30 @@ native_deploy() {
 
 osx_deploy() {
 
-    deploy_command=""
+    # If the /mount directory does not exist, create it and chown to the vagrant user
+    deploy_command="sudo mkdir /mount 2> /dev/null && sudo chown vagrant:vagrant /mount; "
 
-    # Merge any configuration changes to the mount directory
-    deploy_command="$deploy_command diff -arq /vagrant/rookdir/ /mount/ | grep -E '^Files|^Only in /vagrant' > /tmp/diff.txt ; "
-    deploy_command="$deploy_command cat /tmp/diff.txt | grep -E '^Files' | sed -e 's/Files\s\/vagrant\/rookdir\///' -e 's/\sand\s.*//' > /tmp/changes.txt; "
-    deploy_command="$deploy_command cat /tmp/diff.txt | grep -E 'Only in /vagrant' | sed -e 's/Only in \/vagrant\/rookdir\///' -e 's/: //' >> /tmp/changes.txt; "
-    deploy_command="$deploy_command sudo mkdir -p /mount && sudo chown vagrant:vagrant /mount; "
-    deploy_command="$deploy_command (cd /vagrant/rookdir; cat /tmp/changes.txt | xargs --no-run-if-empty cp --parents -r -t /mount); "
+    # Copy the mountdir for the platform to /mount
+    deploy_command="$deploy_command sudo cp -rp /vagrant/rookdir/$PLATFORM /mount/; "
 
+    # Run the platform container
     deploy_command="$deploy_command docker run -name $PLATFORM -d -v /mount/$PLATFORM:/mount -v /vagrant:/app -p 80:80 rook/$PLATFORM init_wrapper $DEPENDENCIES; "
     for DEPENDENCY in $DEPENDENCIES
     do
-        deploy_command="$deploy_command docker run -name $DEPENDENCY -d -v /mount/$DEPENDENCY:/mount rook/$DEPENDENCY; ")
+        # Copy the mountdir for the dependency to /mount
+        deploy_command="$deploy_command sudo cp -rp /vagrant/rookdir/$DEPENDENCY /mount/; "
+
+        # Run the dependency container
+        deploy_command="$deploy_command docker run -name $DEPENDENCY -d -v /mount/$DEPENDENCY:/mount rook/$DEPENDENCY; "
         
         # Connect the application and the dependency through pipework
-        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $DEPENDENCY 192.168.1.2/24; ")
-        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $PLATFORM 192.168.1.1/24; ")
+        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $DEPENDENCY 192.168.1.2/24; "
+        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $PLATFORM 192.168.1.1/24; "
     done
 
-    (cd .rookdir && vagrant ssh -c "$deploy_command")
+    (cd ./rookdir && vagrant ssh -c "$deploy_command")
 
-    # TODO: Get the Vagrant VM's accessible IP address
-    # echo "Application started at: VAGRANT VM address"
+    echo "Application started at: 127.0.0.1"
 }
 
 # Stop the currently deployed local containers
@@ -124,18 +125,21 @@ osx_deploy() {
 development_halt() {
 
     if [ "$OSX" == true ]; then
-        (cd ./rookdir && vagrant ssh -c "docker stop $PLATFORM; docker rm $PLATFORM")
+        halt_command=""
+        halt_command="$halt_command docker stop $PLATFORM; docker rm $PLATFORM; "
         for DEPENDENCY in $DEPENDENCIES
         do
-            (cd ./rookdir && vagrant ssh -c "docker stop $DEPENDENCY; docker rm $DEPENDENCY")
+            halt_command="$halt_command docker stop $DEPENDENCY; docker rm $DEPENDENCY; "
         done
+
+        (cd ./rookdir && vagrant ssh -c "$halt_command")
     else
         docker stop $PLATFORM
         docker rm $PLATFORM
         for DEPENDENCY in $DEPENDENCIES
         do
-            docker stop $DEPENDENCY
-            docker rm $DEPENDENCY
+            docker stop $DEPENDENCY > /dev/null
+            docker rm $DEPENDENCY > /dev/null
         done
     fi
 
