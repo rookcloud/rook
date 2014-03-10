@@ -125,16 +125,12 @@ osx_deploy() {
     echo "Application started at: 127.0.0.1"
 }
 
-# Stop the currently deployed local containers
-# TODO: Make this detect running containers instead of reading them from dependencies.
-#       Users can change the dependencies while containers are running, causing containers not to be stopped.
+# Stop and remove the currently running containers for this application
 development_halt() {
 
-    halt_command="docker stop $APPNAME-$PLATFORM; docker rm $APPNAME-$PLATFORM; "
-    for DEPENDENCY in $DEPENDENCIES
-    do
-        halt_command="$halt_command docker stop $APPNAME-$DEPENDENCY ; docker rm $APPNAME-$DEPENDENCY ; "
-    done
+    halt_command=""
+    halt_command="$halt_command docker ps -a | grep '$APPNAME-' | awk '{print \$1}' | xargs docker stop > /dev/null 2>&1 ; "
+    halt_command="$halt_command docker ps -a | grep '$APPNAME-' | awk '{print \$1}' | xargs docker rm > /dev/null 2>&1 ; "
 
     if [ "$OSX" == true ]; then
         (cd ./rookdir && vagrant ssh -c "$halt_command")
