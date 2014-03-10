@@ -47,6 +47,12 @@ load_dependencies() {
         (cd rookdir && vagrant up) || { echo >&2 "Could not start the Vagrant VM. Exiting..."; exit 1; }
     fi
 
+    # Set the name of the current directory as the application name. 
+    # Filter out characters that are not allowed in container names: [^a-zA-Z0-9_-].
+    # This is a fallback if the Application name is not defined in the Rookfile.
+    # Preferably Rook creates the Application name definition in the Rookfile when it is first created.
+    APPNAME=$(echo "'$(pwd)'" | xargs basename | sed 's/[^a-zA-Z0-9_-]//g')
+
     # TODO: PLATFORM and DEPENDENCIES should be loaded from Rookfile
     PLATFORM="ruby-1.9.3"
     DEPENDENCIES="mysql-5.5"
@@ -74,19 +80,19 @@ native_deploy() {
 
     # TODO: start containers with the correct tags (versions)
     # TODO: Name the containers with an application-specific namespace.
-    docker run -name $PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES
+    docker run --name $APPNAME-$PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES
 
     for DEPENDENCY in $DEPENDENCIES
     do
-        docker run -name $DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY
+        docker run --name $APPNAME-$DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY
 
         # Connect the application and the dependency through pipework
         # TODO: Support more than 1 dependency by using another technology to connect containers.
-        sudo ./rookdir/pipework br1 $DEPENDENCY 192.168.1.2/24
-        sudo ./rookdir/pipework br1 $PLATFORM 192.168.1.1/24
+        sudo ./rookdir/pipework br1 $APPNAME-$DEPENDENCY 192.168.1.2/24
+        sudo ./rookdir/pipework br1 $APPNAME-$PLATFORM 192.168.1.1/24
     done
 
-    IP_ADDRESS=`docker inspect $PLATFORM | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
+    IP_ADDRESS=`docker inspect $APPNAME-$PLATFORM | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
     echo "Application started at: $IP_ADDRESS"
     
 }
@@ -124,23 +130,16 @@ osx_deploy() {
 #       Users can change the dependencies while containers are running, causing containers not to be stopped.
 development_halt() {
 
-    if [ "$OSX" == true ]; then
-        halt_command=""
-        halt_command="$halt_command docker stop $PLATFORM; docker rm $PLATFORM; "
-        for DEPENDENCY in $DEPENDENCIES
-        do
-            halt_command="$halt_command docker stop $DEPENDENCY; docker rm $DEPENDENCY; "
-        done
+    halt_command="docker stop $APPNAME-$PLATFORM; docker rm $APPNAME-$PLATFORM; "
+    for DEPENDENCY in $DEPENDENCIES
+    do
+        halt_command="$halt_command docker stop $APPNAME-$DEPENDENCY ; docker rm $APPNAME-$DEPENDENCY ; "
+    done
 
+    if [ "$OSX" == true ]; then
         (cd ./rookdir && vagrant ssh -c "$halt_command")
     else
-        docker stop $PLATFORM
-        docker rm $PLATFORM
-        for DEPENDENCY in $DEPENDENCIES
-        do
-            docker stop $DEPENDENCY > /dev/null
-            docker rm $DEPENDENCY > /dev/null
-        done
+        eval "$halt_command"
     fi
 
 }
