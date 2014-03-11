@@ -19,10 +19,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # Additional Provisioning
   if Dir.glob("#{File.dirname(__FILE__)}/.vagrant/machines/default/*/id").empty?
     
-    # Install Docker
+    # Install Docker and bridge-utils, a dependency for Pipework
     pkg_cmd =  %{wget -q -O - https://get.docker.io/gpg | apt-key add -; }
     pkg_cmd << %{echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list; }
-    pkg_cmd << %{apt-get update -qq; apt-get install -q -y --force-yes lxc-docker; }
+    pkg_cmd << %{apt-get update -qq; apt-get install -q -y --force-yes lxc-docker bridge-utils; }
 
     # Add the Vagrant user to the Docker group
     pkg_cmd << %{usermod -a -G docker vagrant; }
