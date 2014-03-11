@@ -28,7 +28,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     pkg_cmd << %{usermod -a -G docker vagrant; }
 
     # Install the pipework tool (by Jérôme Petazzoni - https://github.com/jpetazzo)
-    pkg_cmd << %{wget --quiet -P "/home/vagrant" https://raw.github.com/jpetazzo/pipework/master/pipework; }
+    pkg_cmd << %{wget --quiet -P "/home/vagrant" https://raw.github.com/ruphin/pipework/master/pipework; }
     pkg_cmd << %{chmod +x /home/vagrant/pipework; }
 
     config.vm.provision :shell, :inline => pkg_cmd
