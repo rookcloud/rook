@@ -74,7 +74,7 @@ native_deploy() {
 
     # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
     if [ ! -f ./rookdir/pipework ]; then
-        wget --quiet -P "./rookdir" https://raw.github.com/jpetazzo/pipework/master/pipework
+        wget --quiet -P "./rookdir" https://raw.github.com/ruphin/pipework/master/pipework
         chmod +x ./rookdir/pipework
     fi
 
