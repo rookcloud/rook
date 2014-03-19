@@ -2,6 +2,7 @@ require_relative 'default_logger'
 require_relative 'host_provisioners/dummy'
 require_relative 'container_provisioners/dummy'
 require_relative 'component_scaler'
+require_relative 'utils'
 
 module Rook
   class InfrastructureProvisioner
@@ -59,8 +60,9 @@ module Rook
     end
 
     def provision_new_component(desired_component)
-      current_component = State::Component.new
+      current_component = State::Component.new(@state)
       current_component.copy_attributes_from_config_component(desired_component)
+      @state.components << current_component
       Utils.assert { current_component.instances == 0 }
       scaler = ComponentScaler.new(@options.merge(
         :current => current_component,
@@ -76,20 +78,23 @@ module Rook
     end
 
     def deprovision_removed_component(current_component)
-      desired_component = Config::Component.new
+      desired_component = Config::Component.new(@config)
       desired_component.copy_attributes_from_state_component(current_component)
       desired_component.instances = 0
       scaler = ComponentScaler.new(@options.merge(
         :current => current_component,
         :desired => desired_component))
       scaler.run
+      @state.components.delete(current_component)
     end
 
     def deprovision_empty_hosts
       empty_hosts = @state.find_empty_hosts
-      logger.info("The following hosts no longer have any containers: #{empty_hosts}")
-      @host_provisioner.deprovision(empty_hosts)
-      @state.remove_hosts(empty_hosts)
+      if !empty_hosts.empty?
+        logger.info("The following hosts no longer have any containers: #{empty_hosts}")
+        @host_provisioner.deprovision(empty_hosts)
+        @state.remove_hosts(empty_hosts)
+      end
     end
   end
 end

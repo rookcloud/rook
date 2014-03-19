@@ -3,10 +3,11 @@ require_relative 'hash_utils'
 module Rook
   module Config
     class Host
-      attr_accessor :address, :ssh_port
+      attr_accessor :name, :address, :ssh_port
 
       def self.from_yaml(yaml)
         host = new
+        host.name     = HASH_UTILS.get_str!(yaml, 'name')
         host.address  = HASH_UTILS.get_str!(yaml, 'address')
         host.ssh_port = HASH_UTILS.get_str(yaml, 'ssh_port', SSH_DEFAULT_PORT)
         host
@@ -30,7 +31,7 @@ module Rook
       end
 
       def to_s
-        address_and_port
+        @name || address_and_port
       end
     end
   end

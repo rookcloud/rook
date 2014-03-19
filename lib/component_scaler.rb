@@ -80,7 +80,7 @@ module Rook
     end
 
     def add_container(host)
-      container = @container_provisioner.provision(host, @desired)
+      container = @container_provisioner.create(host, @desired)
       container.host = host
       host.containers << container
       @current.containers << container
@@ -114,7 +114,7 @@ module Rook
     end
 
     def remove_container(container)
-      @container_provisioner.deprovision(container)
+      @container_provisioner.destroy(container)
       @current.containers.delete(container)
       container.host.containers.delete(container)
     end

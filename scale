@@ -15,6 +15,6 @@ scaler = Rook::InfrastructureProvisioner.new(
   :state => state,
   :config => config,
   :host_provisioner => Rook::DummyHostProvisioner.new,
-  :container_provisioner => Rook::DummyContainerProvisioner.new)
+  :container_provisioner => Rook::DummyContainerProvisioner.new(:app_path => "."))
 scaler.run
 state.write(STDOUT)

@@ -10,20 +10,22 @@ module Rook
       attr_reader :path
       attr_accessor :rookdir, :components
 
-      def self.load_file(path)
-        file = new
-        file.path = path
+      def self.load_file(path, options = {})
+        file = new(path, options)
         file.load
         file
       end
 
-      def initialize
+      def initialize(path, options = {})
+        @development_mode = options[:development_mode]
         @components = []
-      end
-
-      def path=(path)
         @path = path
         @rookdir = ::File.dirname(path) + "/rookdir"
+        if @development_mode
+          @single_host = Host.from_yaml(
+            'name' => 'Rook main host',
+            'address' => '127.0.0.1')
+        end
       end
 
       def single_host?
@@ -50,7 +52,7 @@ module Rook
 
     private
       def load_single_hosts(yaml)
-        if info = yaml['use_single_host']
+        if !@development_mode && (info = yaml['use_single_host'])
           @single_host = Host.from_yaml(info)
         end
       end

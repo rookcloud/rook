@@ -8,6 +8,7 @@ module Rook
       attr_accessor :config, :instances
       attr_accessor(*COMPONENT_COMMON_ATTRIBUTES)
 
+      alias app_server? app_server
       alias uses_master_slave_replication? uses_master_slave_replication
 
       def self.from_yaml(config, yaml)
@@ -34,6 +35,7 @@ module Rook
 
         self.version      = HASH_UTILS.get_str!(yaml, 'version')
         self.docker_image = HASH_UTILS.get_str(yaml, 'docker_image', "rook/#{type}")
+        self.app_server   = HASH_UTILS.get_bool(yaml, 'app_server')
         self.uses_master_slave_replication = HASH_UTILS.get_bool(yaml,
           'uses_master_slave_replication')
       end

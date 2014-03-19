@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
-name=<%= shq component.config.name %>
+type=<%= shq component.type %>
 docker_image=<%= shq component.docker_image %>
-app_repo_url=<%= shq component.docker_image %>
-app_dir_base="/tmp/apps"
-app_dir="$app_dir_base/$name"
+result_dir=<%= shq result_dir %>
+is_app_server=<%= shq component.app_server? %>

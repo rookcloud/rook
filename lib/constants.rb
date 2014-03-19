@@ -8,5 +8,5 @@ module Rook
 
   # Attributes common to Config::Component and State::Component.
   COMPONENT_COMMON_ATTRIBUTES = [:type, :repo_url, :repo_type, :version, :docker_image,
-  	:uses_master_slave_replication].freeze
+    :app_server, :uses_master_slave_replication].freeze
 end

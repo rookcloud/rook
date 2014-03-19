@@ -11,13 +11,20 @@ module Rook
       attr_accessor :file_version, :components, :hosts
 
       def self.load_file(path)
-        file = new
-        file.path = path
+        file = new(path)
         file.load
         file
       end
 
-      def initialize
+      def self.new_for_config(config, path)
+        file = new(path)
+        file.initialize_for_config(config)
+        file
+      end
+
+      def initialize(path)
+        @path = path
+        @file_version = LATEST_STATE_FILE_VERSION
         @components = []
         @hosts = []
       end
@@ -53,6 +60,17 @@ module Rook
             end
             @hosts.delete(host)
           end
+        end
+      end
+
+      def initialize_for_config(config)
+        if config.single_host?
+          @single_host = true
+          host = Host.new
+          host.name = config.sole_host.name
+          host.address = config.sole_host.address
+          host.ssh_port = config.sole_host.ssh_port
+          @hosts << host
         end
       end
 
