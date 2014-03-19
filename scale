@@ -1,0 +1,123 @@
+#!/usr/bin/env ruby
+require 'logger'
+require_relative 'lib/config'
+require_relative 'lib/host_provisioners/dummy'
+require_relative 'lib/container_provisioners/dummy'
+
+# TODO: ensure that hosts have unique names
+# TODO: check that containers have unique names
+# TODO: support transitioning from single host to multi host and vice versa
+
+module Rook
+  class ScaleCommand
+    attr_accessor :logger
+
+    def initialize(component)
+      @component = component
+      @logger = Logger.new(STDOUT)
+      @host_provisioner = DummyHostProvisioner.new
+      @container_provisioner = DummyContainerProvisioner.new
+    end
+
+    def run
+      if @component.instances > containers.size
+        scale_up(@component.instances - containers.size)
+        config.write_state(STDOUT)
+      elsif @component.instances < containers.size
+        scale_down(containers.size - @component.instances)
+        config.write_state(STDOUT)
+      else
+        logger.info("No scaling necessary.")
+      end
+    end
+
+  private
+    def scale_up(count)
+      logger.info("Scaling up #{@type}: adding #{count} containers")
+      new_containers = add_containers(count)
+
+      if @component.uses_master_slave_replication?
+        if @component.instances == 1
+          setup_master_replication(@component.containers[0])
+        end
+        setup_slaves(new_containers)
+      end
+
+      @component.register_containers(new_containers)
+    end
+
+    def scale_down(count)
+      logger.info("Scaling down #{@component.type}: removing #{count} containers")
+
+      excess_containers = find_excess_containers(count)
+      @container_provisioner.deprovision(excess_containers)
+      @component.unregister_containers(excess_containers)
+      excess_containers.each do |container|
+        container.host.containers.delete(container)
+      end
+      @host_provisioner.deprovision(config.find_empty_hosts)
+
+      if @component.uses_master_slave_replication? && @component.instances == 1
+        uninstall_master_replication(@component.containers[0])
+      end
+    end
+
+    def add_containers(count)
+      new_containers = []
+      if config.single_host?
+        count.times do
+          new_containers << add_container(config.sole_host)
+        end
+      else
+        provision_hosts(count).each do |host|
+          new_containers << add_container(host)
+        end
+      end
+      new_containers
+    end
+
+    def config
+      @component.config
+    end
+
+    def containers
+      @component.containers
+    end
+
+    def provision_hosts(count)
+      hosts = @host_provisioner.provision(@component, count)
+      hosts.each do |host|
+        config.hosts << host
+      end
+      hosts
+    end
+
+    def add_container(host)
+      container = @container_provisioner.provision(host, @component)
+      container.host = host
+      host.containers << container
+      container
+    end
+
+    def setup_master_replication(container)
+      logger.error "setup_master_replication: TODO"
+    end
+
+    def setup_slaves(containers)
+      logger.error "setup_slaves: TODO"
+    end
+
+    def uninstall_master_replication(container)
+      logger.error "uninstall_master_replication: TODO"
+    end
+
+    def find_excess_containers(count)
+      containers = @component.containers
+      containers[(containers.size - count) .. -1]
+    end
+  end
+end
+
+config = Rook::Config.new("Rookfile")
+command = Rook::ScaleCommand.new(config.find_component("mysql-5.5"))
+command.run
