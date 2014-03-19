@@ -5,7 +5,7 @@ module Rook
     def provision(host, component)
       container = Container.new
       container.id = rand(0xFFFF)
-      logger.info "Provisioned dummy container #{container.id} on host #{host.address}!"
+      logger.info "Provisioned dummy container #{container.id} on host #{host}!"
       container
     end
 

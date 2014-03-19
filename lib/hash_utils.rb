@@ -1,8 +1,8 @@
-require_relative 'constants'
-
 module Rook
-  module HashUtils
-    extend self
+  class HashUtils
+    def initialize(error_class)
+      @error_class = error_class
+    end
 
     def get(hash, name, default = nil)
       if hash && hash.has_key?(name)
@@ -24,7 +24,7 @@ module Rook
       if hash && hash.has_key?(name)
         hash[name].to_s
       else
-        raise RequiredKeyError, "Key #{name} required"
+        raise @error_class, "Key #{name} required"
       end
     end
 

@@ -5,7 +5,7 @@ require_relative 'component'
 
 module Rook
   class Config
-    attr_accessor :state_version, :components, :hosts
+    attr_accessor :state_version, :name, :components, :hosts
 
     def initialize(config_path, state_path = nil)
       @config_path = config_path
@@ -34,23 +34,25 @@ module Rook
     end
 
     def write_state(io = nil)
-      ystate = {}
-
-      ystate['state_version'] = @state_version
-      ystate['components'] = components_as_yaml
-      ystate['hosts'] = hosts_as_yaml
-
       if io
-        YAML.dump(ystate, io)
+        YAML.dump(state_as_yaml, io)
       else
         temp_path = @state_path + ".tmp"
         File.open(temp_path, "w") do |f|
-          YAML.dump(ystate, f)
+          YAML.dump(state_as_yaml, f)
           f.flush
           f.fsync
         end
         File.rename(temp_path, @state_path)
       end
+    end
+
+    def state_as_yaml
+      result = {}
+      result['state_version'] = @state_version
+      result['components'] = components_as_yaml
+      result['hosts'] = hosts_as_yaml
+      result
     end
 
   private
@@ -63,6 +65,7 @@ module Rook
       ystate  = YAML.load_file(@state_path)
 
       @state_version = HashUtils.get_str!(ystate, 'state_version')
+      @name = HashUtils.get_str!(yconfig, 'name')
 
       if yconfig['use_single_host']
         yhost = yconfig['use_single_host'].dup

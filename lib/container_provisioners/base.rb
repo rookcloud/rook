@@ -1,13 +1,15 @@
-require 'logger'
-require_relative '../container'
+require_relative '../default_logger'
+require_relative '../state/container'
 
 module Rook
   # Abstract base class for container provisioners.
   class BaseContainerProvisioner
+    attr_reader :options
     attr_accessor :logger
 
     def initialize(options = {})
-      @logger = options[:logger] || Logger.new(STDOUT)
+      @options = options.dup
+      @logger  = (options[:logger] ||= Rook.default_logger)
     end
   end
 end
