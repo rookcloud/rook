@@ -1,11 +1,12 @@
+require_relative '../constants'
 require_relative 'hash_utils'
 require_relative 'container'
 
 module Rook
   module State
     class Component
-      attr_accessor :state, :type, :repo_url, :repo_type, :revision, :docker_image,
-        :uses_master_slave_replication, :containers
+      attr_accessor :state, :containers
+      attr_accessor(*COMPONENT_COMMON_ATTRIBUTES)
 
       alias uses_master_slave_replication? uses_master_slave_replication
 

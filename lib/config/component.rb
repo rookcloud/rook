@@ -1,10 +1,11 @@
+require_relative '../constants'
 require_relative 'hash_utils'
 
 module Rook
   module Config
     class Component
-      attr_accessor :config, :instances, :type, :repo_url, :repo_type, :revision, :docker_image,
-        :uses_master_slave_replication
+      attr_accessor :config, :instances
+      attr_accessor(*COMPONENT_COMMON_ATTRIBUTES)
 
       alias uses_master_slave_replication? uses_master_slave_replication
 
@@ -22,12 +23,14 @@ module Rook
       end
 
       def initialize(state)
-        @state = state
+        @state     = state
         @instances = 0
       end
 
       def copy_attributes_from_state_component(sc)
-        raise "TODO"
+        COMPONENT_COMMON_ATTRIBUTES.each do |attr|
+          send("#{attr}=", sc.send(attr))
+        end
       end
     end
   end
