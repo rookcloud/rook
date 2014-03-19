@@ -10,14 +10,14 @@ module Rook
         host.name = "#{component.type} server #{number}"
         host.address = "#{number}.dummy.org"
         hosts << host
-        puts "Provisioned dummy server #{host.name} at #{host.address}!"
+        logger.info "Provisioned dummy server #{host.name} at #{host.address}!"
       end
       hosts
     end
 
     def deprovision(hosts)
       hosts = [hosts].flatten
-      puts "Deprovisioned dummy hosts #{hosts.map{ |h| h.name }.inspect}!"
+      logger.info "Deprovisioned dummy hosts #{hosts.map{ |h| h.name }.inspect}!"
     end
   end
 end

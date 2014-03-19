@@ -4,7 +4,7 @@ require_relative 'base'
 module Rook
   class DockerProvisioner < BaseContainerProvisioner
     def provision(host, component)
-      command = "docker pull #{shq component.docker_image_name}"
+      command = "docker pull #{shq component.docker_image}"
       raise "TODO"
       ssh_run(host, command)
     end

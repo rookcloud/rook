@@ -5,7 +5,7 @@ require_relative 'component'
 
 module Rook
   class Config
-    attr_accessor :components, :hosts
+    attr_accessor :state_version, :components, :hosts
 
     def initialize(config_path, state_path = nil)
       @config_path = config_path
@@ -35,8 +35,11 @@ module Rook
 
     def write_state(io = nil)
       ystate = {}
+
+      ystate['state_version'] = @state_version
       ystate['components'] = components_as_yaml
       ystate['hosts'] = hosts_as_yaml
+
       if io
         YAML.dump(ystate, io)
       else
@@ -59,6 +62,8 @@ module Rook
       yconfig = YAML.load_file(@config_path)
       ystate  = YAML.load_file(@state_path)
 
+      @state_version = HashUtils.get_str!(ystate, 'state_version')
+
       if yconfig['use_single_host']
         yhost = yconfig['use_single_host'].dup
         yhost['name'] = HashUtils.get_str(yhost, 'name', "Main Rook host")
@@ -68,6 +73,7 @@ module Rook
       load_hosts(yconfig, ystate)
       load_components(yconfig, ystate)
       fixup_sole_host
+      upgrade_state_version
     end
 
     def load_hosts(yconfig, ystate)
@@ -94,6 +100,10 @@ module Rook
           @sole_host = new_sole_host
         end
       end
+    end
+
+    def upgrade_state_version
+      @state_version = LATEST_STATE_VERSION
     end
 
     def components_as_yaml
