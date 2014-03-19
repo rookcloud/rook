@@ -5,7 +5,7 @@ require_relative 'container'
 module Rook
   module State
     class Component
-      attr_accessor :state, :containers
+      attr_accessor :state, :revision, :containers
       attr_accessor(*COMPONENT_COMMON_ATTRIBUTES)
 
       alias uses_master_slave_replication? uses_master_slave_replication
@@ -16,6 +16,7 @@ module Rook
         component.repo_url     = HASH_UTILS.get_str!(yaml, 'repo_url')
         component.repo_type    = HASH_UTILS.get_str!(yaml, 'repo_type')
         component.revision     = HASH_UTILS.get_str!(yaml, 'revision')
+        component.version      = HASH_UTILS.get_str!(yaml, 'version')
         component.docker_image = HASH_UTILS.get_str!(yaml, 'docker_image')
         component.uses_master_slave_replication = HASH_UTILS.get_bool(yaml,
           'uses_master_slave_replication')
@@ -33,7 +34,9 @@ module Rook
       end
 
       def attributes_match_config_component?(cc)
-        raise "TODO"
+        COMPONENT_COMMON_ATTRIBUTES.all? do |attr|
+          send(attr) == cc.send(attr)
+        end
       end
 
       def as_yaml

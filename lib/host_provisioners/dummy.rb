@@ -6,7 +6,7 @@ module Rook
       hosts = []
       count.times do
         number = rand(0xFFFF)
-        host = Host.new
+        host = State::Host.new
         host.name = "#{component.type} server #{number}"
         host.address = "#{number}.dummy.org"
         hosts << host

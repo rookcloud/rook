@@ -20,11 +20,7 @@ module Rook
       if !@current.attributes_match_config_component?(@desired)
         raise ArgumentError, "Current and desired component states don't have matching attributes"
       end
-      # if @current.type != @desired.type
-      #   raise ArgumentError, "current type and desired type mismatch " +
-      #     "(#{@current.type.inspect} vs #{@desired.type.inspect})"
-      # end
-      if current_state.single_host? != desired_state.single_host?
+      if current_state.single_host? != desired_config.single_host?
         if current_state.single_host?
           raise "To transition from a single-host to multi-host setup, use 'rook transition --to-multi-host' instead."
         else
@@ -113,7 +109,7 @@ module Rook
     end
 
     def find_excess_containers(count)
-      containers = @desired.containers
+      containers = @current.containers
       containers[(containers.size - count) .. -1]
     end
 
@@ -136,6 +132,10 @@ module Rook
 
     def current_state
       @current.state
+    end
+
+    def desired_config
+      @desired.config
     end
 
     def single_host_setup?

@@ -24,7 +24,7 @@ module Rook
       if hash && hash.has_key?(name)
         hash[name].to_s
       else
-        raise @error_class, "Key #{name} required"
+        raise @error_class, "Key #{name.inspect} required"
       end
     end
 

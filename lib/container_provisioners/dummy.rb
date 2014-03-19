@@ -3,7 +3,7 @@ require_relative 'base'
 module Rook
   class DummyContainerProvisioner < BaseContainerProvisioner
     def provision(host, component)
-      container = Container.new
+      container = State::Container.new
       container.id = rand(0xFFFF)
       logger.info "Provisioned dummy container #{container.id} on host #{host}!"
       container

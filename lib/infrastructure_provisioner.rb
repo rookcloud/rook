@@ -2,7 +2,6 @@ require_relative 'default_logger'
 require_relative 'host_provisioners/dummy'
 require_relative 'container_provisioners/dummy'
 require_relative 'component_scaler'
-require_relative 'utils'
 
 module Rook
   class InfrastructureProvisioner
@@ -10,7 +9,9 @@ module Rook
 
     def initialize(options = {})
       @options = options.dup
-      @logger = (@options[:logger] ||= Rook.default_logger)
+      @logger  = (@options[:logger] ||= Rook.default_logger)
+      @state   = options[:state]  || raise(ArgumentError, ":state must be given")
+      @config  = options[:config] || raise(ArgumentError, ":config must be given")
       @host_provisioner = (@options[:host_provisioner] ||= DummyHostProvisioner.new(:logger => @logger))
       @options[:container_provisioner] ||= DummyContainerProvisioner.new(:logger => @logger)
     end
@@ -40,7 +41,7 @@ module Rook
       existing_components = []
       removed_components = []
 
-      @desired.components.each do |desired_component|
+      @config.components.each do |desired_component|
         if current_component = @state.find_component(desired_component.type)
           existing_components << [current_component, desired_component]
         else
@@ -49,7 +50,7 @@ module Rook
       end
 
       @state.components.each do |current_component|
-        if @desired.find_component(current_component.type).nil?
+        if @config.find_component(current_component.type).nil?
           removed_components << current_component
         end
       end
@@ -88,6 +89,7 @@ module Rook
       empty_hosts = @state.find_empty_hosts
       logger.info("The following hosts no longer have any containers: #{empty_hosts}")
       @host_provisioner.deprovision(empty_hosts)
+      @state.remove_hosts(empty_hosts)
     end
   end
 end

@@ -42,6 +42,20 @@ module Rook
         @hosts.find_all { |h| h.containers.empty? }
       end
 
+      def remove_hosts(hosts)
+        if single_host?
+          raise "Cannot remove hosts in single-host mode"
+        else
+          hosts = [hosts].flatten
+          hosts.each do |host|
+            if !host.containers.empty?
+              raise "Cannot remove host with non-zero number of containers: #{host}"
+            end
+            @hosts.delete(host)
+          end
+        end
+      end
+
       def load
         yaml = YAML.load_file(@path)
 

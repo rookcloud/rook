@@ -3,8 +3,18 @@ require_relative 'lib/config/file'
 require_relative 'lib/state/file'
 require_relative 'lib/host_provisioners/dummy'
 require_relative 'lib/container_provisioners/dummy'
+require_relative 'lib/component_scaler'
+require_relative 'lib/infrastructure_provisioner'
 
 state = Rook::State::File.load_file("Rookfile.state")
 state.write(STDOUT)
 
 config = Rook::Config::File.load_file("Rookfile")
+
+scaler = Rook::InfrastructureProvisioner.new(
+  :state => state,
+  :config => config,
+  :host_provisioner => Rook::DummyHostProvisioner.new,
+  :container_provisioner => Rook::DummyContainerProvisioner.new)
+scaler.run
+state.write(STDOUT)
