@@ -1,6 +1,6 @@
-require_relative 'default_logger'
+require_relative '../default_logger'
+require_relative '../utils'
 require_relative 'component_scaling_planner'
-require_relative 'utils'
 
 module Rook
   class InfrastructureChangePlanner

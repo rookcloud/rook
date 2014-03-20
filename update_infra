@@ -1,0 +1,19 @@
+#!/usr/bin/env ruby
+require_relative 'lib/config/file'
+require_relative 'lib/state/file'
+require_relative 'lib/planners/infrastructure_change_planner'
+require_relative 'lib/planners/route_planner'
+
+config = Rook::Config::File.load_file("Rookfile")
+state = Rook::State::File.load_file("Rookfile.state")
+state.write(STDOUT)
+
+planner = Rook::InfrastructureChangePlanner.new(
+  :config => config,
+  :state => state)
+planner.run
+
+planner = Rook::RoutePlanner.new(:config => config, :state => state)
+planner.run
+
+state.write(STDOUT)

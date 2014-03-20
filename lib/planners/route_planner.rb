@@ -1,9 +1,9 @@
-require_relative 'default_logger'
-require_relative 'state/route'
-require_relative 'state/service_port_redirection'
+require_relative '../default_logger'
+require_relative '../state/route'
+require_relative '../state/service_port_redirection'
 
 module Rook
-  class TunnelPlanner
+  class RoutePlanner
     class Service
       # The container that provides the service.
       attr_accessor :container
@@ -21,14 +21,13 @@ module Rook
     end
 
     attr_accessor :logger
-    attr_reader :services, :routes
 
     def initialize(options = {})
-      @config = options[:config]
-      @state  = options[:state]
-      @logger = Rook.default_logger
-      @source_port_range = 11000..11500
-      @host_port_range   = 17000..18000
+      @config = options[:config] || raise(ArgumentError, ":config must be given")
+      @state  = options[:state]  || raise(ArgumentError, ":state must be given")
+      @logger = options[:logger] || Rook.default_logger
+      @source_port_range = options[:source_port_range] || (11000..12000)
+      @host_port_range   = options[:host_port_range]   || (17000..18000)
     end
 
     def run

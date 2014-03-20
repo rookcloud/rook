@@ -1,4 +1,4 @@
-require_relative 'default_logger'
+require_relative '../default_logger'
 
 # TODO: check that containers have unique names
 
