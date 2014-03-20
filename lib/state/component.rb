@@ -14,10 +14,6 @@ module Rook
       def self.from_yaml(state, yaml, all_hosts)
         component = new(state)
         component.type         = HASH_UTILS.get_str!(yaml, 'type')
-        component.repo_url     = HASH_UTILS.get_str!(yaml, 'repo_url')
-        component.repo_type    = HASH_UTILS.get_str!(yaml, 'repo_type')
-        component.revision     = HASH_UTILS.get_str!(yaml, 'revision')
-        component.version      = HASH_UTILS.get_str!(yaml, 'version')
         component.docker_image = HASH_UTILS.get_str!(yaml, 'docker_image')
         component.app_server   = HASH_UTILS.get_bool(yaml, 'app_server')
         component.uses_master_slave_replication = HASH_UTILS.get_bool(yaml,
@@ -50,9 +46,6 @@ module Rook
       def as_yaml
         {
           'type'         => @type,
-          'repo_url'     => @repo_url,
-          'repo_type'    => @repo_type,
-          'revision'     => @revision,
           'docker_image' => @docker_image,
           'uses_master_slave_replication' => uses_master_slave_replication?,
           'containers'   => @containers.map { |c| c.as_yaml }

@@ -13,7 +13,7 @@ module Rook
     end
 
     def run
-      container_provisioner = DockerProvisioner.new(
+      container_provisioner = DummyContainerProvisioner.new(
         :app_path => @app_path,
         :development_mode => true)
       provisioner = InfrastructureProvisioner.new(
@@ -29,5 +29,5 @@ end
 config = Rook::Config::File.load_file("Rookfile", :development_mode => true)
 state  = Rook::State::File.new_for_config(config, "Rookfile.state")
 command = Rook::DevelopCommand.new(config, state)
-#command.run
+command.run
 state.write(STDOUT)

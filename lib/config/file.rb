@@ -67,9 +67,7 @@ module Rook
           if !ycomponent.is_a?(Hash)
             raise ConfigFileLoadError, "The 'components' section contains an invalid entry"
           end
-          component = Component.from_yaml(self, ycomponent)
-          component.load_attributes_from_rookdir
-          @components << component
+          @components << Component.from_yaml(self, ycomponent)
         end
       end
     end

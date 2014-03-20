@@ -7,6 +7,6 @@ module Rook
   SSH_DEFAULT_PORT = 22
 
   # Attributes common to Config::Component and State::Component.
-  COMPONENT_COMMON_ATTRIBUTES = [:type, :repo_url, :repo_type, :version, :docker_image,
-    :app_server, :uses_master_slave_replication].freeze
+  COMPONENT_COMMON_ATTRIBUTES = [:type, :docker_image, :app_server,
+    :uses_master_slave_replication].freeze
 end
