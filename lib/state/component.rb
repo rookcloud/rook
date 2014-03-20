@@ -8,6 +8,7 @@ module Rook
       attr_accessor :state, :revision, :containers
       attr_accessor(*COMPONENT_COMMON_ATTRIBUTES)
 
+      alias consumes_services? consumes_services
       alias app_server? app_server
       alias uses_master_slave_replication? uses_master_slave_replication
 
@@ -15,6 +16,8 @@ module Rook
         component = new(state)
         component.type         = HASH_UTILS.get_str!(yaml, 'type')
         component.docker_image = HASH_UTILS.get_str!(yaml, 'docker_image')
+        component.consumes_services = HASH_UTILS.get_bool(yaml, 'consumes_services')
+        component.service_ports     = HASH_UTILS.get_int_array(yaml, 'service_ports')
         component.app_server   = HASH_UTILS.get_bool(yaml, 'app_server')
         component.uses_master_slave_replication = HASH_UTILS.get_bool(yaml,
           'uses_master_slave_replication')
@@ -44,12 +47,18 @@ module Rook
       end
 
       def as_yaml
-        {
+        result = {
           'type'         => @type,
           'docker_image' => @docker_image,
-          'uses_master_slave_replication' => uses_master_slave_replication?,
-          'containers'   => @containers.map { |c| c.as_yaml }
+          'consumes_services' => consumes_services?,
+          'app_server'        => app_server?,
+          'uses_master_slave_replication' => uses_master_slave_replication?
         }
+        if !@service_ports.empty?
+          result['service_ports'] = @service_ports
+        end
+        result['containers'] = @containers.map { |c| c.as_yaml }
+        result
       end
 
     private

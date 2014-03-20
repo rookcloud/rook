@@ -41,12 +41,44 @@ module Rook
         end
       end
 
+      def namespace
+        "test"
+      end
+
       def find_component(type)
         @components.find { |c| c.type == type }
       end
 
+      def find_container(id)
+        @components.each do |component|
+          if result = component.containers.find { |c| c.id == id }
+            return result
+          end
+        end
+        nil
+      end
+
       def find_empty_hosts
         @hosts.find_all { |h| h.containers.empty? }
+      end
+
+      def generate_host_name
+        first = %w(Jolly Happy Awesome Groovy Smoking Zappy Snappy Whacky Springy
+          Spongy Speedy Funky Sunny Warm Shiny).sample
+        last = %w(Tree Grass Flower Bush
+          Tomato Apple Orange Mango
+          Cloud Rock Stone Hill Mountain Lake
+          House Hut Tower
+          Car Bike Skate Saucer Mobile
+          Bird Bear Turtle Cat Duck Puppy Fish Dino
+        ).sample
+        # TODO: autodetect when we're out of names
+        while true
+          name = "#{first} #{last}"
+          if @hosts.none? { |h| h.name == name }
+            return name
+          end
+        end
       end
 
       def remove_hosts(hosts)
@@ -81,6 +113,8 @@ module Rook
         load_hosts(yaml)
         load_components(yaml)
 
+        associate_route_destinations
+        associate_host_service_port_redirection_containers
         upgrade_file_version
       end
 
@@ -143,6 +177,36 @@ module Rook
             raise StateFileLoadError, "The 'components' section contains an invalid entry"
           end
           @components << Component.from_yaml(self, ycomponent, @hosts)
+        end
+      end
+
+      def associate_route_destinations
+        @components.each do |component|
+          component.containers.each do |container|
+            container.routes.each do |route|
+              container = find_container(route.destination)
+              if container
+                route.destination = container
+              else
+                raise StateFileLoadError, "Cannot find component #{route.destination.inspect}, " +
+                  "as referenced by a route in #{component.type}"
+              end
+            end
+          end
+        end
+      end
+
+      def associate_host_service_port_redirection_containers
+        @hosts.each do |host|
+          host.service_port_redirections.each_value do |redirection|
+            container = find_container(redirection.container)
+            if container
+              redirection.container = container
+            else
+              raise StateFileLoadError, "Cannot find component #{redirection.container.inspect}, " +
+                "as referenced by a service port redirection in host #{host}"
+            end
+          end
         end
       end
 

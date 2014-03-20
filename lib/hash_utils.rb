@@ -36,6 +36,26 @@ module Rook
       end
     end
 
+    def get_int!(hash, name)
+      if hash && hash.has_key?(name)
+        hash[name].to_i
+      else
+        raise @error_class, "Key #{name.inspect} required"
+      end
+    end
+
+    def get_int_array(hash, name, default = [])
+      if hash && value = hash[name]
+        if value.is_a?(Array)
+          value.map { |x| x.to_i }
+        else
+          raise @error_class, "Key #{name.inspect} must be an array"
+        end
+      else
+        default
+      end
+    end
+
     def get_bool(hash, name, default = false)
       if hash && hash.has_key?(name)
         hash[name].to_s == "true"

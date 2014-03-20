@@ -8,6 +8,7 @@ module Rook
       attr_accessor :config, :instances
       attr_accessor(*COMPONENT_COMMON_ATTRIBUTES)
 
+      alias consumes_services? consumes_services
       alias app_server? app_server
       alias uses_master_slave_replication? uses_master_slave_replication
 
@@ -16,7 +17,9 @@ module Rook
         component.instances    = HASH_UTILS.get_int(yaml, 'instances', 1)
         component.type         = HASH_UTILS.get_str!(yaml, 'type')
         component.docker_image = HASH_UTILS.get_str(yaml, 'docker_image', "rook/#{component.type}")
-        component.app_server   = HASH_UTILS.get_bool(yaml, 'app_server')
+        component.consumes_services = HASH_UTILS.get_bool(yaml, 'consumes_services')
+        component.service_ports     = HASH_UTILS.get_int_array(yaml, 'service_ports')
+        component.app_server        = HASH_UTILS.get_bool(yaml, 'app_server')
         component.uses_master_slave_replication = HASH_UTILS.get_bool(yaml,
           'uses_master_slave_replication')
         component
