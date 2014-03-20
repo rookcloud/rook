@@ -127,7 +127,7 @@ module Rook
         consumer.routes.each do |route|
           if route.source_port.nil?
             route.source_port = pick_available_source_port_in_container(route.source)
-            logger.debug "Assigned source port #{route.source_port} to route #{route}"
+            logger.debug "Assigning source port #{route.source_port} to route #{route}"
           end
         end
       end

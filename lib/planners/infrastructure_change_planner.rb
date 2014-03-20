@@ -15,6 +15,7 @@ module Rook
 
     def run
       new_components, existing_components, removed_components = categorize_components
+      changed = new_components.any? || removed_components.any?
 
       new_components.each do |cconfig|
         plan_component_creation(cconfig)
@@ -22,7 +23,7 @@ module Rook
 
       existing_components.each do |item|
         cconfig, cstate = item
-        plan_component_scaling(cconfig, cstate)
+        changed = plan_component_scaling(cconfig, cstate) || changed
       end
 
       removed_components.each do |cstate|
@@ -30,6 +31,7 @@ module Rook
       end
 
       #deprovision_empty_hosts
+      changed
     end
 
   private
