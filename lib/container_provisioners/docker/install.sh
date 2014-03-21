@@ -165,18 +165,24 @@ fi
 
 header "Installing Rook directory structure"
 run mkdir -p "$prefix"
+# Only change owner/mode of the following directories if they didn't exist before.
 if ! [[ -e "$prefix/$namespace" ]]; then
   run mkdir "$prefix/$namespace"
-  # Only change owner/mode if the directory didn't exist before.
   run chown root:docker "$prefix/$namespace"
   run chmod u=rwx,g=x,o= "$prefix/$namespace"
 fi
 main_path="$prefix/$namespace/$component_type"
+if ! [[ -e "$main_path" ]]; then
+  run mkdir "$main_path"
+  run chown root:docker "$main_path"
+  run chmod u=rwx,g=x,o= "$main_path"
+fi
 
-run mkdir -p "$main_path"
-run mkdir -p "$main_path/app"
 run mkdir -p "$main_path/persist"
 run mkdir -p "$main_path/cache"
+if $app_server; then
+  run mkdir -p "$main_path/app"
+fi
 
 if $development_mode; then
   run rm -rf "$main_path/config" "$main_path/log"
