@@ -81,6 +81,8 @@ container_name="rook_${namespace}_${component_type}"
 
 docker_opts=()
 command_in_docker=()
+silence=true
+
 if $app_server; then
   docker_opts+=(-v)
   docker_opts+=("$main_path/app/current:/app")
@@ -91,21 +93,31 @@ if $shell; then
   docker_opts+=(--rm)
   command_in_docker+=(/bin/bash)
   command_in_docker+=(-l)
+  silence=false
 else
   docker_opts+=(-d)
   command_in_docker+=(init_wrapper)
 fi
 
+function start_container()
+{
+  docker run \
+    "${docker_opts[@]}" \
+    -v "$main_path/config:/rook/config:ro" \
+    -v "$main_path/log:/rook/log" \
+    -v "$main_path/persist:/rook/persist" \
+    -v "$main_path/cache:/rook/cache" \
+    --name "$container_name" \
+    "$docker_image" \
+    "${command_in_docker[@]}"
+}
+
 header "Starting container $container_name"
-docker run \
-  "${docker_opts[@]}" \
-  -v "$main_path/config:/rook/config:ro" \
-  -v "$main_path/log:/rook/log" \
-  -v "$main_path/persist:/rook/persist" \
-  -v "$main_path/cache:/rook/cache" \
-  --name "$container_name" \
-  "$docker_image" \
-  "${command_in_docker[@]}"
+if $silence; then
+  start_container >/dev/null
+else
+  start_container
+fi
 
 # TODO: wait until container gives readiness signal
 #touch "$result_dir/result"
