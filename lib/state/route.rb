@@ -11,6 +11,10 @@ module Rook
       # The service port inside the destination container.
       attr_accessor :service_port
 
+      def environment_name
+        "#{destination.component.type.upcase}_PORT_#{service_port}"
+      end
+
       def as_yaml
         {
           'container'  => @destination.id,

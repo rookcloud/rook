@@ -98,6 +98,9 @@ else
   docker_opts+=(-d)
   command_in_docker+=(init_wrapper)
 fi
+if [[ -e "$main_path/config/rook_docker_options" ]]; then
+  docker_opts+=(`cat "$main_path/config/rook_docker_options"`)
+fi
 
 function start_container()
 {

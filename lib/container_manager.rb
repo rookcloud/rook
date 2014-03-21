@@ -27,7 +27,24 @@ module Rook
           payload << app_tarball
         end
       end
+
+      docker_options = []
+      tunnels = []
+      @container.service_port_redirections.each_pair do |service_port, host_port|
+        docker_options << "-p 0.0.0.0:#{host_port}:#{service_port}"
+      end
+      @container.routes.each do |route|
+        docker_options << "-e #{route.environment_name}=#{route.source_port}"
+        tunnels << [route.source_port,
+          route.destination.host.address,
+          route.destination.host.ssh_port,
+          route.destination.service_port_redirections[route.service_port]
+        ].join(" ")
+      end
+      include docker_options and tunnels in config_tarball
+
       payload << config_tarball
+
       run_script("install.sh", params, payload)
     end
 
