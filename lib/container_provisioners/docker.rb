@@ -92,17 +92,8 @@ module Rook
       else
         app_path = @app_path
       end
-      command = %Q{
-        set -e
-        app_path=#{shq app_path}
-        deployment_path=#{shq deployment_path}/#{shq component.type}
-
-        mkdir -p "$deployment_path"
-        rm -rf "$deployment_path/code"
-        ln -s "$app_path" "$deployment_path/code"
-      }
       if using_vagrant?
-        vagrant_ssh_run(component.config.rookdir, command)
+        vagrant_ssh_run(component.config.rookdir, "#{DIR}/docker/update_code_in_development.sh")
       else
         logger.info("Setting up local development environment.")
         sudo_run(command)

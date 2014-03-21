@@ -14,5 +14,9 @@ module Rook
         raise "Assertion failed"
       end
     end
+
+    def on_linux?
+      RUBY_PLATFORM =~ /linux/i
+    end
   end
 end
