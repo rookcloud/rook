@@ -74,7 +74,7 @@ module Rook
     end
 
     def plan_container_creation(host)
-      container = State::Container.new
+      container = State::Container.new(@cstate)
       container.id = "rook-#{state.namespace}-#{type}"
       container.host = host
       container.planned_action = :create

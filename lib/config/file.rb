@@ -41,6 +41,10 @@ module Rook
         end
       end
 
+      def development_mode?
+        @development_mode
+      end
+
       def use_vagrant?
         @use_vagrant || !Utils.on_linux?
       end

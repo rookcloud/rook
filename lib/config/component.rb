@@ -35,6 +35,10 @@ module Rook
           send("#{attr}=", sc.send(attr))
         end
       end
+
+      def config_path
+        ::File.join(@config.rookdir, @type, "config")
+      end
     end
   end
 end

@@ -6,11 +6,12 @@ module Rook
   module State
     class Container
       attr_accessor :id, :host, :routes, :service_port_redirections
-      attr_accessor :planned_action
+      attr_accessor :component, :planned_action
 
-      def self.from_yaml(yaml, all_hosts)
+      def self.from_yaml(component, yaml, all_hosts)
         host_name      = HASH_UTILS.get_str!(yaml, 'host')
-        container      = new
+        container      = new(component)
+        container.component = component
         container.id   = HASH_UTILS.get_str!(yaml, 'id')
         container.host = all_hosts.find { |h| h.name == host_name }
         if container.host.nil?
@@ -22,9 +23,11 @@ module Rook
         container
       end
 
-      def initialize
+      def initialize(component)
+        @component = component
         @routes = []
         @service_port_redirections = {}
+        component.containers << self
       end
 
       def find_route_to(container, service_port)
