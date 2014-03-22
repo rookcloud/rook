@@ -20,8 +20,8 @@ module Rook
       def initialize(path, options = {})
         @development_mode = options[:development_mode]
         @components = []
-        @path = path
-        @rookdir = ::File.join(::File.dirname(path), "rookdir")
+        @path = ::File.absolute_path(path)
+        @rookdir = ::File.absolute_path(::File.join(::File.dirname(path), "rookdir"))
         if @development_mode
           @single_host = Host.from_yaml(
             'name' => 'Rook main host',
@@ -50,7 +50,7 @@ module Rook
       end
 
       def app_path
-        File.absolute_path(File.dirname(@path))
+        File.dirname(@path)
       end
 
       def find_component(type)

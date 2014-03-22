@@ -84,7 +84,7 @@ fi
 if [[ "$docker_image" = "" ]]; then
   docker_image="rook/$component_type"
 fi
-if $app_server && $development_mode && [[ "$app_path" = "" ]]; then
+if $development_mode && [[ "$app_path" = "" ]]; then
   abort "Please specify an app path with -p. Or specify -h for usage."
 fi
 

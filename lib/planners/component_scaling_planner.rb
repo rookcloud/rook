@@ -79,7 +79,6 @@ module Rook
       container.host = host
       container.planned_action = :create
       host.containers << container
-      @cstate.containers << container
       logger.info "Planning creation of new container: #{container}"
       container
     end

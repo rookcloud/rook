@@ -21,17 +21,15 @@ module Rook
       ]
       if @config.development_mode?
         params << "-e"
+        params << "-p"
+        if @config.use_vagrant?
+          params << "/vagrant"
+        else
+          params << @config.app_path
+        end
       end
       if component.app_server?
         params << "-a"
-        if @config.development_mode?
-          params << "-p"
-          if @config.use_vagrant?
-            params << "/vagrant"
-          else
-            params << @config.app_path
-          end
-        end
       end
 
       add_payload = lambda do |package_path|
