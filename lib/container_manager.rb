@@ -132,7 +132,7 @@ module Rook
 
     def package_scripts(package_path)
       sh("tar cf #{shq package_path} *",
-        :chdir => File.join(DIR, "container_provisioners", "docker"))
+        :chdir => File.join(DIR, "container_manager"))
     end
 
     def package_component_config_files(main_package_path)
