@@ -14,27 +14,47 @@ module Rook
     end
 
     def run
+      plan_infrastructure_change
+      plan_routes
+      install_containers
+      restart_containers
+    end
+
+  private
+    def plan_infrastructure_change
       planner = InfrastructureChangePlanner.new(
         :config => @config,
         :state => @state)
       planner.run
+    end
 
+    def plan_routes
       planner = RoutePlanner.new(:config => @config, :state => @state)
       planner.run
+    end
 
-      @state.hosts.each do |host|
-        if host.planned_action == :create
-          raise "TODO"
+    def install_containers
+      each_container do |container|
+        if container.planned_action == :create
+          Rook.default_logger.info "Installing #{container} on #{container.host}"
+          manager = ContainerManager.new(@config, container)
+          manager.install
         end
       end
+    end
 
+    def restart_containers
+      each_container do |container|
+        Rook.default_logger.info "Restarting #{container} on #{container.host}"
+        manager = ContainerManager.new(@config, container)
+        manager.restart
+      end
+    end
+
+    def each_container
       @state.components.each do |component|
         component.containers.each do |container|
-          if container.planned_action == :create
-            Rook.default_logger.info "Installing #{container} on #{container.host}"
-            manager = ContainerManager.new(@config, container)
-            manager.install
-          end
+          yield container
         end
       end
     end

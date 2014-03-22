@@ -10,6 +10,7 @@ source "$SELFDIR/library.sh"
 function usage()
 {
   echo "./start.sh [OPTIONS]"
+  echo "Starts a container unless it's already running."
   echo
   echo "Required options:"
   echo "  -n NAMESPACE       Namespace for use under prefix directory"
@@ -19,6 +20,7 @@ function usage()
   echo "  -f PREFIX          Prefix directory (default: /rook)"
   echo "  -d DOCKER_IMAGE    Docker image name (default: rook/TYPE)"
   echo "  -a                 Specify that this component is an app server"
+  echo "  -r                 Restart container if it's already running"
   echo "  -s                 Instead of running the Docker container normally,"
   echo "                     run a shell inside the container"
   echo "  -h                 Show usage"
@@ -30,9 +32,10 @@ component_type=
 prefix=/rook
 docker_image=
 app_server=false
+restart=false
 shell=false
 
-while getopts "n:t:f:d:ash" opt; do
+while getopts "n:t:f:d:arsh" opt; do
   case "$opt" in
   n)
     namespace="$OPTARG"
@@ -48,6 +51,9 @@ while getopts "n:t:f:d:ash" opt; do
     ;;
   a)
     app_server=true
+    ;;
+  r)
+    restart=true
     ;;
   s)
     shell=true
@@ -76,8 +82,6 @@ container_name="rook_${namespace}_${component_type}"
 
 
 ##### Main code #####
-
-/bin/bash "$SELFDIR/stop.sh" -n "$namespace" -t "$component_type"
 
 docker_opts=()
 command_in_docker=()
@@ -115,13 +119,18 @@ function start_container()
     "${command_in_docker[@]}"
 }
 
+if container_exists "$container_name"; then
+  if $restart || ! container_running "$container_name"; then
+    /bin/bash "$SELFDIR/stop.sh" -n "$namespace" -t "$component_type"
+  else
+    exit 0
+  fi
+fi
+
 header "Starting container $container_name"
 if $silence; then
   start_container >/dev/null
 else
   start_container
 fi
-
 # TODO: wait until container gives readiness signal
-#touch "$result_dir/result"
-#chmod 777 "$result_dir/result" # So that the provisioner, which isn't running as root, can delete the directory.

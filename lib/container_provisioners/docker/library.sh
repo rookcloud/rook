@@ -51,6 +51,24 @@ function silence_unless_failed()
   fi
 }
 
+function container_is_running()
+{
+  local container_name="$1"
+  (
+    set -o pipefail
+    docker ps | awk '{ print $NF }' | tail -n+2 | grep -q "^$container_name$"
+  )
+}
+
+function container_exists()
+{
+  local container_name="$1"
+  (
+    set -o pipefail
+    docker ps -a | awk '{ print $NF }' | tail -n+2 | grep -q "^$container_name$"
+  )
+}
+
 function abort()
 {
   echo "*** ERROR: $@" >&2

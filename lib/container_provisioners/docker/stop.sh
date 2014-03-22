@@ -52,14 +52,12 @@ container_name="rook_${namespace}_${component_type}"
 
 ##### Main code #####
 
-set -o pipefail
-
-if docker ps | awk '{ print $NF }' | tail -n+2 | grep -q "^$container_name$"; then
+if container_is_running "$container_name"; then
   header "Stopping container $container_name"
   silence_unless_failed indent_output docker stop "$container_name"
 fi
 
-if docker ps -a | awk '{ print $NF }' | tail -n+2 | grep -q "^$container_name$"; then
+if container_exists "$container_name"; then
   header "Removing container $container_name"
   silence_unless_failed indent_output docker rm -f "$container_name"
 fi

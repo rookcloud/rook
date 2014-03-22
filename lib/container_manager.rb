@@ -51,14 +51,11 @@ module Rook
     end
 
     def start
-      params = [
-        "-n", state.namespace,
-        "-t", component.type
-      ]
-      if component.app_server?
-        params << "-a"
-      end
-      run_script("start.sh", params)
+      start_or_restart(false)
+    end
+
+    def restart
+      start_or_restart(true)
     end
 
     def stop
@@ -70,6 +67,20 @@ module Rook
     end
 
   private
+    def start_or_restart(restart)
+      params = [
+        "-n", state.namespace,
+        "-t", component.type
+      ]
+      if component.app_server?
+        params << "-a"
+      end
+      if restart
+        params << "-r"
+      end
+      run_script("start.sh", params)
+    end
+
     def run_script(name, params, add_payload = nil)
       Dir.mktmpdir do |tmpdir|
         package_path = File.join(tmpdir, "package.tar")
@@ -81,15 +92,14 @@ module Rook
         package_path = File.join(tmpdir, "package.tar.gz")
 
         if !@config.development_mode? || @config.use_vagrant?
-          temp_dir = ssh_capture_first_line("mktemp -d /tmp/rook.XXXXXXXX",
-            :sudo => false)
+          temp_dir = create_temp_dir_on_target_host
           begin
-            logger.debug "The temporary directory inside the VM is: #{temp_dir}"
+            logger.debug "The temporary directory on the host is: #{temp_dir}"
             scp(package_path, "#{temp_dir}/package.tar.gz")
             ssh_run("cd #{shq temp_dir} && " +
               "tar xzf package.tar.gz && " +
               "rm package.tar.gz && " +
-              "exec /bin/bash install.sh #{shqa params}")
+              "exec /bin/bash #{name} #{shqa params}")
           ensure
             ssh_run("rm -rf #{shq temp_dir}")
           end
@@ -100,6 +110,25 @@ module Rook
           sudo_run(File.join(tmpdir, name))
         end
       end
+    end
+
+    def create_temp_dir_on_target_host
+      temp_dir = ssh_capture_first_line("mktemp -d /tmp/rook.XXXXXXXX",
+        :sudo => false)
+      if @config.use_vagrant?
+        if temp_dir.empty?
+          raise "Unable to create a temporary directory inside the Vagrant VM"
+        else
+          logger.debug "The temporary directory inside the Vagrant VM is: #{temp_dir}"
+        end
+      else
+        if temp_dir.empty?
+          raise "Unable to create a temporary directory on host #{host}"
+        else
+          logger.debug "The temporary directory on host #{host} is: #{temp_dir}"
+        end
+      end
+      temp_dir
     end
 
     def package_scripts(package_path)
