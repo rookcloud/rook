@@ -1,5 +1,6 @@
 require_relative '../safe_yaml'
 require_relative '../constants'
+require_relative '../utils'
 require_relative 'hash_utils'
 require_relative 'component'
 require_relative 'host'
@@ -20,7 +21,7 @@ module Rook
         @development_mode = options[:development_mode]
         @components = []
         @path = path
-        @rookdir = ::File.dirname(path) + "/rookdir"
+        @rookdir = ::File.join(::File.dirname(path), "rookdir")
         if @development_mode
           @single_host = Host.from_yaml(
             'name' => 'Rook main host',
@@ -38,6 +39,14 @@ module Rook
         else
           raise "#sole_host may only be called in single-host mode"
         end
+      end
+
+      def use_vagrant?
+        @use_vagrant || !Utils.on_linux?
+      end
+
+      def app_path
+        File.absolute_path(File.dirname(@path))
       end
 
       def find_component(type)

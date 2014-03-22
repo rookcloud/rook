@@ -65,7 +65,7 @@ container_name="rook_${namespace}_${component_type}"
 
 ##### Main code #####
 
-"$SELFDIR/stop.sh" -n "$namespace" -t "$component_type"
+/bin/bash "$SELFDIR/stop.sh" -n "$namespace" -t "$component_type"
 
 header "Removing $namespace, component $component_type"
 run rm -rf "$prefix/$namespace/$component_type"

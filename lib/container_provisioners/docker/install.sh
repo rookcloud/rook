@@ -195,19 +195,19 @@ if $development_mode; then
 else
   run mkdir -p "$main_path/config"
   run mkdir -p "$main_path/log"
-  if [[ -e "$input_path/config.tar.gz" ]]; then
+  if [[ -e "$input_path/config.tar" ]]; then
     status "Installing component configuration"
     pushd "$main_path/config" >/dev/null
     shopt -s dotglob
     indent_output rm -rf *
-    indent_output tar xzf "$input_path/config.tar.gz"
+    indent_output tar xzf "$input_path/config.tar"
     shopt -u dotglob
     indent_output chmod -R root: .
     popd >/dev/null
   fi
 fi
 
-if ! $development_mode && $app_server; then
+if ! $development_mode && $app_server && [[ -e "$input_path/app.tar" ]]; then
   header "Installing application code"
 
   release_name=`date +%Y%d%m-%H%M%S`
@@ -215,7 +215,7 @@ if ! $development_mode && $app_server; then
   run mkdir "$main_path/app/releases/$release_name"
   pushd "$main_path/app/releases/$release_name" >/dev/null
   status "Extracting app files to $main_path/app/releases/$release_name"
-  indent_output tar xzf "$input_path/app.tar.gz"
+  indent_output tar xzf "$input_path/app.tar"
   indent_output chmod -R rookapp: .
   popd >/dev/null
 

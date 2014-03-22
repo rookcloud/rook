@@ -77,7 +77,7 @@ container_name="rook_${namespace}_${component_type}"
 
 ##### Main code #####
 
-"$SELFDIR/stop.sh" -n "$namespace" -t "$component_type"
+/bin/bash "$SELFDIR/stop.sh" -n "$namespace" -t "$component_type"
 
 docker_opts=()
 command_in_docker=()
@@ -96,7 +96,7 @@ if $shell; then
   silence=false
 else
   docker_opts+=(-d)
-  command_in_docker+=(init_wrapper)
+  command_in_docker+=(/sbin/rook_init)
 fi
 if [[ -e "$main_path/config/rook_docker_options" ]]; then
   docker_opts+=(`cat "$main_path/config/rook_docker_options"`)
