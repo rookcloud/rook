@@ -31,7 +31,7 @@ module Rook
       @state.components.each do |component|
         component.containers.each do |container|
           if container.planned_action == :create
-            Rook.default_logger.info "Installing #{container}"
+            Rook.default_logger.info "Installing #{container} on #{container.host}"
             manager = ContainerManager.new(@config, container)
             manager.install
           end

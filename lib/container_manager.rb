@@ -83,7 +83,8 @@ module Rook
         package_path = File.join(tmpdir, "package.tar.gz")
 
         if !@config.development_mode? || @config.use_vagrant?
-          temp_dir = ssh_capture_first_line("mktemp -d /tmp/rook.XXXXXXXX")
+          temp_dir = ssh_capture_first_line("mktemp -d /tmp/rook.XXXXXXXX",
+            :sudo => false)
           begin
             logger.debug "The temporary directory inside the VM is: #{temp_dir}"
             scp(package_path, "#{temp_dir}/package.tar.gz")
@@ -187,12 +188,15 @@ module Rook
       end
     end
 
-    def ssh_capture_first_line(command)
+    def ssh_capture_first_line(command, options = {})
       if @config.use_vagrant?
         # 'vagrant ssh' prints "Connection to xxx closed." at termination,
         # but we're only interested in the first line anyway.
         logger.debug("Running inside Vagrant VM: #{command}")
-        vagrant_param = "sudo /bin/bash -c #{shq command}"
+        vagrant_param = "/bin/bash -c #{shq command}"
+        if options.fetch(:sudo, true)
+          vagrant_param = "sudo #{vagrant_param}"
+        end
         output = `cd #{shq @config.rookdir} && exec vagrant ssh -c #{shq vagrant_param} 2>&1`
         if $?.exitstatus != 0
           raise "Could not run command inside Vagrant VM: #{command}"
