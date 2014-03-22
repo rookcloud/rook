@@ -94,7 +94,6 @@ module Rook
         if !@config.development_mode? || @config.use_vagrant?
           temp_dir = create_temp_dir_on_target_host
           begin
-            logger.debug "The temporary directory on the host is: #{temp_dir}"
             scp(package_path, "#{temp_dir}/package.tar.gz")
             ssh_run("cd #{shq temp_dir} && " +
               "tar xzf package.tar.gz && " +
