@@ -1,0 +1,57 @@
+file_version: 1.0
+components:
+  - type: ruby-1.9.3
+    docker_image: rook/ruby-1.9.3
+    consumes_services: true
+    app_server: true
+    containers:
+      - id: web1
+        host: Main Rook host
+        routes:
+          # Keyed by source port.
+          9837:
+            container: rook-test-mysql-5.5
+            service_port: 4300
+      - id: web2
+        host: Web host "bar"
+        routes:
+          9373:
+            container: rook-test-mysql-5.5
+            service_port: 4300
+      - id: web3
+        host: Web host "baz"
+  - type: mysql-5.5
+    docker_image: rook/mysql-5.5
+    service_ports:
+      - 4300
+    uses_master_slave_replication: true
+    containers:
+      - id: rook-test-mysql-5.5
+        host: Awesome House
+        service_port_redirections:
+          # service_port -> host_port
+          4300: 2830
+hosts:
+  - name: Main Rook host
+    address: 127.0.0.1
+    containers: 1
+  - name: Web host "bar"
+    address: 127.0.0.2
+    containers: 1
+  - name: Web host "baz"
+    address: 127.0.0.3
+    containers: 1
+  - name: Database host "jo"
+    address: 127.0.0.4
+    containers: 0
+  - name: Database host "hm"
+    address: 127.0.0.4
+    containers: 0
+  - name: Awesome House
+    address: 127.0.0.5
+    containers: 1
+    service_port_redirections:
+      # Keyed by host port.
+      2830:
+        container: rook-test-mysql-5.5
+        service_port: 4300

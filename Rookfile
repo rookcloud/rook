@@ -1,0 +1,14 @@
+#use_single_host:
+#  address: 127.0.0.1
+components:
+  - type: ruby-1.9.3
+    consumes_services: true
+    app_server: true
+    instances: 1
+    size: large
+  - type: mysql-5.5
+    service_ports:
+      - 4300
+    uses_master_slave_replication: true
+    instances: 1
+    size: small
