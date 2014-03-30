@@ -100,7 +100,7 @@ if $shell; then
   silence=false
 else
   docker_opts+=(-d)
-  command_in_docker+=(/sbin/rook_init)
+  command_in_docker+=(/rook/scripts/rook_init)
 fi
 if [[ -e "$main_path/config/rook_docker_options" ]]; then
   docker_opts+=(`cat "$main_path/config/rook_docker_options"`)
