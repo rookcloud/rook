@@ -210,7 +210,7 @@ fi
 if ! $development_mode && $app_server && [[ -e "$input_path/app.tar" ]]; then
   header "Installing application code"
 
-  release_name=`date +%Y%d%m-%H%M%S`
+  release_name=`date +%Y%m%d-%H%M%S`
   run mkdir -p "$main_path/app/releases"
   run mkdir "$main_path/app/releases/$release_name"
   pushd "$main_path/app/releases/$release_name" >/dev/null
@@ -227,7 +227,8 @@ if ! $development_mode && $app_server && [[ -e "$input_path/app.tar" ]]; then
   fi
   run mv -Tf "$main_path/app/current.new" "$main_path/app/current"
 
-  # TODO: cleanup old releases
+  status "Cleaning up old releases"
+  ls -1d "$main_path/app/releases"/* | sort | tail -n +4 | tr '\n' '\0' | xargs -0 rm -rf
 fi
 
 
