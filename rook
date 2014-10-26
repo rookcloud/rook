@@ -29,22 +29,22 @@ load_dependencies() {
     # When using OS X, make sure the Vagrant VM is running before proceeding    
     if [ "$OSX" == true ]; then
         
-        # Check if Vagrant is installed
-        command -v vagrant >/dev/null 2>&1 || { 
-            echo >&2 "Rook uses Vagrant on OS X."
-            echo >&2 "Please refer to the installation instructions on the Vagrant website:"
+        # TODO: Check if VirtualBox is installed
+        # command -v VirtualBox >/dev/null 2>&1 || { 
+        #     echo >&2 "Rook uses Vagrant on OS X."
+        #     echo >&2 "Please refer to the installation instructions on the Vagrant website:"
+        #     echo >&2 ""
+        #     echo >&2 "http://www.vagrantup.com/downloads.html"
+        #     exit 1
+        # }
+
+        docker info > /dev/null 2>&1 || {
+            echo >&2 "Docker cannot connect to the daemon"
+            echo >&2 "Please check if boot2docker is installed and running"
             echo >&2 ""
-            echo >&2 "http://www.vagrantup.com/downloads.html"
+            echo >&2 "https://docs.docker.com/installation/mac/"
             exit 1
         }
-
-        # Check if the Vagrantfile is available, fetch it if it isn't
-        if [ ! -f ./rookdir/Vagrantfile ]; then
-            wget --quiet -P "./rookdir" https://raw.github.com/rookcloud/rook/master/Vagrantfile
-        fi
-
-        # Start the Vagrant VM
-        (cd rookdir && vagrant up) || { echo >&2 "Could not start the Vagrant VM. Exiting..."; exit 1; }
     fi
 
     # Set the name of the current directory as the application name. 
@@ -63,67 +63,55 @@ development_deploy() {
 
     development_halt
 
-    if [ "$OSX" == true ]; then
-        osx_deploy
-    else
+    # if [ "$OSX" == true ]; then
+        # osx_deploy
+    # else
         native_deploy
-    fi
+    # fi
 }
 
 native_deploy() {
 
-    # Check if Pipework is available, fetch it if it isn't ( https://github.com/jpetazzo/pipework )
-    if [ ! -f ./rookdir/pipework ]; then
-        wget --quiet -P "./rookdir" https://raw.github.com/ruphin/pipework/master/pipework
-        chmod +x ./rookdir/pipework
-    fi
-
-    # TODO: start containers with the correct tags (versions)
-    # TODO: Name the containers with an application-specific namespace.
-    docker run --name $APPNAME-$PLATFORM -d -v $PWD/rookdir/$PLATFORM:/mount -v $PWD:/app rook/$PLATFORM init_wrapper $DEPENDENCIES > /dev/null
-
     for DEPENDENCY in $DEPENDENCIES
     do
-        docker run --name $APPNAME-$DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/mount rook/$DEPENDENCY > /dev/null
-
-        # Connect the application and the dependency through pipework
-        # TODO: Support more than 1 dependency by using another technology to connect containers.
-        sudo ./rookdir/pipework br1 $APPNAME-$DEPENDENCY 192.168.1.2/24
-        sudo ./rookdir/pipework br1 $APPNAME-$PLATFORM 192.168.1.1/24
+        docker run --name $APPNAME-$DEPENDENCY -d -v $PWD/rookdir/$DEPENDENCY:/rook/persist rook/$DEPENDENCY
     done
+    # TODO: start containers with the correct tags (versions)
+    # TODO: Name the containers with an application-specific namespace.
+    docker run --name $APPNAME-$PLATFORM -d -v $PWD/rookdir/$PLATFORM:/rook/persist -v $PWD:/app -p 80:80 --link $APPNAME-mysql-5.5:MYSQL rook/$PLATFORM /rook/scripts/rook_init $DEPENDENCIES
 
     IP_ADDRESS=`docker inspect $APPNAME-$PLATFORM | grep 'IPAddress' | sed -e 's/\s*"IPAddress": "//' -e 's/",\s*//'`
     echo "Application started at: $IP_ADDRESS"
     
 }
 
-osx_deploy() {
+# osx_deploy() {
 
-    # If the /mount directory does not exist, create it and chown to the vagrant user
-    deploy_command="sudo mkdir /mount 2> /dev/null && sudo chown vagrant:vagrant /mount; "
+#     # If the /mount directory does not exist, create it and chown to the vagrant user
+#     deploy_command="sudo mkdir /mount 2> /dev/null && sudo chown vagrant:vagrant /mount; "
 
-    # Copy the mountdir for the platform to /mount
-    deploy_command="$deploy_command sudo cp -rp /vagrant/rookdir/$PLATFORM /mount/; "
+#     # Copy the mountdir for the platform to /mount
+#     deploy_command="$deploy_command sudo cp -rp /vagrant/rookdir/$PLATFORM /mount/; "
 
-    # Run the platform container
-    deploy_command="$deploy_command docker run --name $APPNAME-$PLATFORM -d -v /mount/$PLATFORM:/mount -v /vagrant:/app -p 80:80 rook/$PLATFORM init_wrapper $DEPENDENCIES > /dev/null; "
-    for DEPENDENCY in $DEPENDENCIES
-    do
-        # Copy the mountdir for the dependency to /mount
-        deploy_command="$deploy_command sudo cp -rp /vagrant/rookdir/$DEPENDENCY /mount/; "
+#     # Run the platform container
+#     deploy_command="$deploy_command docker run --name $APPNAME-$PLATFORM -d -v /mount/$PLATFORM:/mount -v /vagrant:/app -p 80:80 rook/$PLATFORM init_wrapper $DEPENDENCIES > /dev/null; "
+#     for DEPENDENCY in $DEPENDENCIES
+#     do
+#         # Copy the mountdir for the dependency to /mount
+#         deploy_command="$deploy_command sudo cp -rp /vagrant/rookdir/$DEPENDENCY /mount/; "
 
-        # Run the dependency container
-        deploy_command="$deploy_command docker run --name $APPNAME-$DEPENDENCY -d -v /mount/$DEPENDENCY:/mount rook/$DEPENDENCY > /dev/null; "
+#         # Run the dependency container
+#         deploy_command="$deploy_command docker run --name $APPNAME-$DEPENDENCY -d -v /mount/$DEPENDENCY:/mount rook/$DEPENDENCY > /dev/null; "
         
-        # Connect the application and the dependency through pipework
-        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $APPNAME-$DEPENDENCY 192.168.1.2/24; "
-        deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $APPNAME-$PLATFORM 192.168.1.1/24; "
-    done
+#         # Connect the application and the dependency through pipework
+#         deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $APPNAME-$DEPENDENCY 192.168.1.2/24; "
+#         deploy_command="$deploy_command sudo /home/vagrant/pipework br1 $APPNAME-$PLATFORM 192.168.1.1/24; "
+#     done
 
-    (cd ./rookdir && vagrant ssh -c "$deploy_command")
+#     (cd ./rookdir && vagrant ssh -c "$deploy_command")
 
-    echo "Application started at: 172.18.0.2"
-}
+#     echo "Application started at: 172.18.0.2"
+# }
 
 # Stop and remove the currently running containers for this application
 development_halt() {
@@ -132,11 +120,11 @@ development_halt() {
     halt_command="$halt_command docker ps -a | grep '$APPNAME-' | awk '{print \$1}' | xargs docker stop > /dev/null 2>&1 ; "
     halt_command="$halt_command docker ps -a | grep '$APPNAME-' | awk '{print \$1}' | xargs docker rm > /dev/null 2>&1 ; "
 
-    if [ "$OSX" == true ]; then
-        (cd ./rookdir && vagrant ssh -c "$halt_command")
-    else
+    # if [ "$OSX" == true ]; then
+    #     (cd ./rookdir && vagrant ssh -c "$halt_command")
+    # else
         eval "$halt_command"
-    fi
+    # fi
 
 }
 
